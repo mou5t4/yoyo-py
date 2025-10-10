@@ -326,7 +326,7 @@ class NowPlayingScreen(Screen):
         art_y = label_y + 30
 
         # Gradient-like effect with multiple rectangles
-        for i in range(0, art_size, 20):
+        for i in range(0, art_size // 2, 20):
             gray_value = 40 + i
             color = (gray_value, gray_value, gray_value)
             self.display.rectangle(
