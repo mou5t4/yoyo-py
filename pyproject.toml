@@ -23,6 +23,9 @@ dependencies = [
     "requests>=2.31.0",
     "paho-mqtt>=2.0.0",
     "loguru>=0.7.0",
+    "st7789>=0.0.4",
+    "spidev>=3.6",
+    "RPi.GPIO>=0.7.1",
 ]
 
 [project.optional-dependencies]
