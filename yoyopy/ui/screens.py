@@ -6,11 +6,14 @@ for different application states.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from loguru import logger
 
 from yoyopy.ui.display import Display
+
+if TYPE_CHECKING:
+    from yoyopy.ui.screen_manager import ScreenManager
 
 
 class Screen(ABC):
@@ -31,7 +34,12 @@ class Screen(ABC):
         """
         self.display = display
         self.name = name
+        self.screen_manager: Optional['ScreenManager'] = None
         logger.debug(f"Screen '{name}' initialized")
+
+    def set_screen_manager(self, manager: 'ScreenManager') -> None:
+        """Set the screen manager for navigation."""
+        self.screen_manager = manager
 
     @abstractmethod
     def render(self) -> None:
@@ -47,7 +55,7 @@ class Screen(ABC):
         """
         Called when screen becomes active.
 
-        Override to perform screen initialization.
+        Override to perform screen initialization and set up button handlers.
         """
         logger.info(f"Entering screen: {self.name}")
 
@@ -55,9 +63,25 @@ class Screen(ABC):
         """
         Called when screen becomes inactive.
 
-        Override to perform cleanup.
+        Override to perform cleanup and remove button handlers.
         """
         logger.info(f"Exiting screen: {self.name}")
+
+    def on_button_a(self) -> None:
+        """Handle Button A press. Override in subclasses."""
+        pass
+
+    def on_button_b(self) -> None:
+        """Handle Button B press. Override in subclasses."""
+        pass
+
+    def on_button_x(self) -> None:
+        """Handle Button X press. Override in subclasses."""
+        pass
+
+    def on_button_y(self) -> None:
+        """Handle Button Y press. Override in subclasses."""
+        pass
 
 
 class HomeScreen(Screen):
@@ -66,6 +90,9 @@ class HomeScreen(Screen):
 
     Shows the main branding and current device status including
     battery, time, and signal strength.
+
+    Button mapping:
+    - Button A: Open main menu
     """
 
     def __init__(self, display: Display) -> None:
@@ -142,12 +169,24 @@ class HomeScreen(Screen):
         # Update display
         self.display.update()
 
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Open main menu."""
+        if self.screen_manager:
+            self.screen_manager.push_screen("menu")
+
 
 class MenuScreen(Screen):
     """
     Menu screen for navigation.
 
     Displays a list of menu options with selection indicator.
+
+    Button mapping:
+    - Button A: Select current item
+    - Button B: Go back to home screen
+    - Button X: Move selection up
+    - Button Y: Move selection down
     """
 
     def __init__(
@@ -266,6 +305,34 @@ class MenuScreen(Screen):
         """Get currently selected item."""
         return self.items[self.selected_index]
 
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Select current item."""
+        selected_item = self.get_selected()
+        logger.info(f"Menu item selected: {selected_item}")
+
+        # Navigate to appropriate screen based on selection
+        if self.screen_manager:
+            if selected_item == "Music" or selected_item == "Podcasts" or selected_item == "Audiobooks":
+                self.screen_manager.push_screen("now_playing")
+            elif selected_item == "Settings":
+                logger.info("Settings not implemented yet")
+
+    def on_button_b(self) -> None:
+        """Button B: Go back to home screen."""
+        if self.screen_manager:
+            self.screen_manager.pop_screen()
+
+    def on_button_x(self) -> None:
+        """Button X: Move selection up."""
+        self.select_previous()
+        self.render()
+
+    def on_button_y(self) -> None:
+        """Button Y: Move selection down."""
+        self.select_next()
+        self.render()
+
 
 class NowPlayingScreen(Screen):
     """
@@ -273,6 +340,12 @@ class NowPlayingScreen(Screen):
 
     Displays current track information, playback controls,
     and progress indicator.
+
+    Button mapping:
+    - Button A: Toggle play/pause
+    - Button B: Go back to menu
+    - Button X: Volume up (placeholder)
+    - Button Y: Volume down (placeholder)
     """
 
     def __init__(
@@ -455,3 +528,22 @@ class NowPlayingScreen(Screen):
         """Toggle play/pause state."""
         self.is_playing = not self.is_playing
         logger.debug(f"Playback: {'playing' if self.is_playing else 'paused'}")
+
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Toggle play/pause."""
+        self.toggle_playback()
+        self.render()
+
+    def on_button_b(self) -> None:
+        """Button B: Go back to menu."""
+        if self.screen_manager:
+            self.screen_manager.pop_screen()
+
+    def on_button_x(self) -> None:
+        """Button X: Volume up (placeholder)."""
+        logger.info("Volume up (not implemented)")
+
+    def on_button_y(self) -> None:
+        """Button Y: Volume down (placeholder)."""
+        logger.info("Volume down (not implemented)")
