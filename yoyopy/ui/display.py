@@ -1,7 +1,7 @@
 """
 Display controller for Pimoroni Display HAT Mini.
 
-Provides hardware abstraction for the ST7789 240x320 display
+Provides hardware abstraction for the Display HAT Mini 320x240 display
 with drawing primitives and status bar functionality.
 """
 
@@ -11,11 +11,11 @@ from PIL import Image, ImageDraw, ImageFont
 from loguru import logger
 
 try:
-    import ST7789
+    from displayhatmini import DisplayHATMini
     HAS_DISPLAY = True
 except ImportError:
     HAS_DISPLAY = False
-    logger.warning("ST7789 library not available - display will be simulated")
+    logger.warning("DisplayHATMini library not available - display will be simulated")
 
 
 class Display:
@@ -57,27 +57,24 @@ class Display:
         self.draw: Optional[ImageDraw.ImageDraw] = None
         self.device = None
 
+        # Create drawing buffer first
+        self._create_buffer()
+
         if not self.simulate:
             try:
-                # Initialize ST7789 display
-                self.device = ST7789.ST7789(
-                    port=0,
-                    cs=1,
-                    dc=9,
-                    backlight=13,
-                    rotation=90,  # Landscape orientation
-                    spi_speed_hz=80_000_000
-                )
-                logger.info("Display initialized successfully")
+                # Initialize DisplayHATMini with buffer and backlight PWM
+                self.device = DisplayHATMini(self.buffer, backlight_pwm=True)
+                self.device.set_backlight(1.0)  # Full brightness
+                # Optional: Set LED to a subtle color
+                self.device.set_led(0.1, 0.0, 0.5)  # Purple LED
+                logger.info("DisplayHATMini initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize display hardware: {e}")
                 logger.info("Falling back to simulation mode")
                 self.simulate = True
+                self.device = None
         else:
             logger.info("Display running in simulation mode")
-
-        # Create drawing buffer
-        self._create_buffer()
 
     def _create_buffer(self) -> None:
         """Create a new drawing buffer."""
@@ -313,7 +310,7 @@ class Display:
 
         if not self.simulate and self.device:
             try:
-                self.device.display(self.buffer)
+                self.device.display()
                 logger.debug("Display updated")
             except Exception as e:
                 logger.error(f"Failed to update display: {e}")
