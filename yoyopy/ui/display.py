@@ -91,7 +91,7 @@ class Display:
         if color is None:
             color = self.COLOR_BLACK
 
-        self._create_buffer()
+        # Don't create a new buffer, just clear the existing one
         self.draw.rectangle([(0, 0), (self.WIDTH, self.HEIGHT)], fill=color)
         logger.debug(f"Display cleared with color {color}")
 
