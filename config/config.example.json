@@ -1,0 +1,55 @@
+{
+  "device": {
+    "name": "YoyoPod-001",
+    "device_id": "",
+    "model": "YoyoPod Connect"
+  },
+  "display": {
+    "width": 320,
+    "height": 240,
+    "rotation": 0,
+    "backlight_timeout": 30
+  },
+  "audio": {
+    "volume": 50,
+    "sample_rate": 44100,
+    "buffer_size": 2048
+  },
+  "connectivity": {
+    "mode": "4g",
+    "wifi_fallback": true,
+    "apn": "",
+    "wifi_ssid": "",
+    "wifi_password": ""
+  },
+  "server": {
+    "api_url": "https://api.yoyopod.com",
+    "mqtt_broker": "mqtt.yoyopod.com",
+    "mqtt_port": 8883,
+    "use_ssl": true
+  },
+  "content": {
+    "max_cache_size_mb": 500,
+    "auto_cleanup": true,
+    "offline_mode": false
+  },
+  "parental_controls": {
+    "enabled": true,
+    "max_daily_minutes": 120,
+    "bedtime_start": "20:00",
+    "bedtime_end": "07:00",
+    "content_rating": "everyone"
+  },
+  "logging": {
+    "level": "INFO",
+    "console": true,
+    "file": true,
+    "log_dir": "./logs"
+  },
+  "features": {
+    "voip_calling": true,
+    "gps_tracking": true,
+    "emergency_button": true,
+    "nfc_enabled": false
+  }
+}
