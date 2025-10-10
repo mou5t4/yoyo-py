@@ -1,10 +1,10 @@
 # yoyopy
 
-**YoyoPod Connect** - A screen-minimal streaming device for kids aged 6-12, built on Raspberry Pi Zero 2 W.
+**YoyoPod** - A screen-minimal streaming device for kids aged 6-12, built on Raspberry Pi Zero 2 W.
 
 ## Overview
 
-yoyopy is the Python application that powers the YoyoPod Connect variant, featuring audio streaming, VoIP calling, and GPS tracking capabilities. Designed to provide a safe, parent-controlled entertainment experience for children.
+yoyopy is the Python application that powers the YoyoPod variant, featuring audio streaming, VoIP calling, and GPS tracking capabilities. Designed to provide a safe, parent-controlled entertainment experience for children.
 
 ## Hardware Requirements
 
