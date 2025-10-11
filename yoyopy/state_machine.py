@@ -15,14 +15,15 @@ from yoyopy.app_context import AppContext
 
 class AppState(Enum):
     """Application states."""
-    IDLE = "idle"              # Home screen, ready to start
-    MENU = "menu"              # Main menu navigation
-    PLAYING = "playing"        # Playing audio content
-    PAUSED = "paused"          # Playback paused
-    SETTINGS = "settings"      # Settings screen
-    PLAYLIST = "playlist"      # Playlist/library view
-    CONNECTING = "connecting"  # Network connection setup
-    ERROR = "error"            # Error state
+    IDLE = "idle"                    # Home screen, ready to start
+    MENU = "menu"                    # Main menu navigation
+    PLAYING = "playing"              # Playing audio content
+    PAUSED = "paused"                # Playback paused
+    SETTINGS = "settings"            # Settings screen
+    PLAYLIST = "playlist"            # Playlist/library view
+    PLAYLIST_BROWSER = "playlist_browser"  # Browsing Mopidy playlists
+    CONNECTING = "connecting"        # Network connection setup
+    ERROR = "error"                  # Error state
 
 
 @dataclass
@@ -84,6 +85,7 @@ class StateMachine:
             StateTransition(AppState.MENU, AppState.IDLE, "back"),
             StateTransition(AppState.MENU, AppState.PLAYING, "select_media"),
             StateTransition(AppState.MENU, AppState.PLAYLIST, "select_playlist"),
+            StateTransition(AppState.MENU, AppState.PLAYLIST_BROWSER, "browse_playlists"),
             StateTransition(AppState.MENU, AppState.SETTINGS, "select_settings"),
 
             # From PLAYING
@@ -99,6 +101,10 @@ class StateMachine:
             # From PLAYLIST
             StateTransition(AppState.PLAYLIST, AppState.MENU, "back"),
             StateTransition(AppState.PLAYLIST, AppState.PLAYING, "select_track"),
+
+            # From PLAYLIST_BROWSER
+            StateTransition(AppState.PLAYLIST_BROWSER, AppState.MENU, "back"),
+            StateTransition(AppState.PLAYLIST_BROWSER, AppState.PLAYING, "load_playlist"),
 
             # From SETTINGS
             StateTransition(AppState.SETTINGS, AppState.MENU, "back"),

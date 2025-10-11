@@ -329,9 +329,12 @@ class MopidyClient:
             logger.error(f"Failed to get time position: {e}")
             return 0
 
-    def get_playlists(self) -> List[MopidyPlaylist]:
+    def get_playlists(self, fetch_track_counts: bool = False) -> List[MopidyPlaylist]:
         """
         Get available playlists.
+
+        Args:
+            fetch_track_counts: If True, fetch track count for each playlist (slower)
 
         Returns:
             List of MopidyPlaylist objects
@@ -344,9 +347,23 @@ class MopidyClient:
 
             playlists = []
             for pl_data in playlists_data:
+                uri = pl_data.get("uri", "")
+                name = pl_data.get("name", "Unknown Playlist")
+                track_count = 0
+
+                # Optionally fetch track count (requires additional API call per playlist)
+                if fetch_track_counts:
+                    try:
+                        playlist_details = self._rpc_call("core.playlists.lookup", {"uri": uri})
+                        if playlist_details and "tracks" in playlist_details:
+                            track_count = len(playlist_details["tracks"])
+                    except Exception as e:
+                        logger.warning(f"Failed to get track count for {name}: {e}")
+
                 playlist = MopidyPlaylist(
-                    uri=pl_data.get("uri", ""),
-                    name=pl_data.get("name", "Unknown Playlist")
+                    uri=uri,
+                    name=name,
+                    track_count=track_count
                 )
                 playlists.append(playlist)
 
