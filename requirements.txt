@@ -1,0 +1,16 @@
+# YoyoPod Dependencies
+
+# Display and input hardware
+displayhatmini>=0.0.1
+
+# Audio playback
+pygame>=2.5.0
+
+# HTTP client for Mopidy API
+requests>=2.31.0
+
+# Logging
+loguru>=0.7.0
+
+# Image processing (for future features)
+Pillow>=10.0.0

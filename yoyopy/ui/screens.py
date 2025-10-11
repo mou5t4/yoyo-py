@@ -361,14 +361,15 @@ class NowPlayingScreen(Screen):
     Button mapping:
     - Button A: Toggle play/pause
     - Button B: Go back to menu
-    - Button X: Volume up (placeholder)
-    - Button Y: Volume down (placeholder)
+    - Button X: Previous track
+    - Button Y: Next track
     """
 
     def __init__(
         self,
         display: Display,
-        context: Optional['AppContext'] = None
+        context: Optional['AppContext'] = None,
+        mopidy_client=None  # Optional MopidyClient for Spotify streaming
     ) -> None:
         """
         Initialize now playing screen.
@@ -376,17 +377,39 @@ class NowPlayingScreen(Screen):
         Args:
             display: Display controller
             context: Application context
+            mopidy_client: Optional MopidyClient for streaming
         """
         super().__init__(display, context, "NowPlaying")
+        self.mopidy_client = mopidy_client
 
     def render(self) -> None:
         """Render the now playing screen."""
-        # Get track info from context
-        track = self.context.get_current_track() if self.context else None
-        track_title = track.title if track else "No Track"
-        artist = track.artist if track else "Unknown Artist"
-        progress = self.context.get_playback_progress() if self.context else 0.0
-        is_playing = self.context.playback.is_playing if self.context else False
+        # Get track info from Mopidy or context
+        if self.mopidy_client:
+            # Get track from Mopidy
+            mopidy_track = self.mopidy_client.get_current_track()
+            if mopidy_track:
+                track_title = mopidy_track.name
+                artist = mopidy_track.get_artist_string()
+                # Calculate progress from position and track length
+                if mopidy_track.length > 0:
+                    position_ms = self.mopidy_client.get_time_position()
+                    progress = position_ms / mopidy_track.length
+                else:
+                    progress = 0.0
+                is_playing = self.mopidy_client.get_playback_state() == "playing"
+            else:
+                track_title = "No Track"
+                artist = "Unknown Artist"
+                progress = 0.0
+                is_playing = False
+        else:
+            # Fallback to context for local tracks
+            track = self.context.get_current_track() if self.context else None
+            track_title = track.title if track else "No Track"
+            artist = track.artist if track else "Unknown Artist"
+            progress = self.context.get_playback_progress() if self.context else 0.0
+            is_playing = self.context.playback.is_playing if self.context else False
 
         # Clear display
         self.display.clear(self.display.COLOR_BLACK)
@@ -536,7 +559,15 @@ class NowPlayingScreen(Screen):
     # Button handlers
     def on_button_a(self) -> None:
         """Button A: Toggle play/pause."""
-        if self.context:
+        if self.mopidy_client:
+            # Use Mopidy for playback control
+            state = self.mopidy_client.get_playback_state()
+            if state == "playing":
+                self.mopidy_client.pause()
+            else:
+                self.mopidy_client.play()
+        elif self.context:
+            # Fallback to context for local playback
             self.context.toggle_playback()
         self.render()
 
@@ -546,13 +577,23 @@ class NowPlayingScreen(Screen):
             self.screen_manager.pop_screen()
 
     def on_button_x(self) -> None:
-        """Button X: Volume up."""
-        if self.context:
-            new_volume = self.context.volume_up()
-            logger.info(f"Volume up: {new_volume}")
+        """Button X: Previous track."""
+        if self.mopidy_client:
+            # Use Mopidy for track navigation
+            self.mopidy_client.previous_track()
+            self.render()
+        elif self.context:
+            # Fallback to context for local tracks
+            self.context.previous_track()
+            self.render()
 
     def on_button_y(self) -> None:
-        """Button Y: Volume down."""
-        if self.context:
-            new_volume = self.context.volume_down()
-            logger.info(f"Volume down: {new_volume}")
+        """Button Y: Next track."""
+        if self.mopidy_client:
+            # Use Mopidy for track navigation
+            self.mopidy_client.next_track()
+            self.render()
+        elif self.context:
+            # Fallback to context for local tracks
+            self.context.next_track()
+            self.render()
