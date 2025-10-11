@@ -119,7 +119,7 @@ def main():
     input_handler = None
     if not simulate:
         logger.info("Initializing input handler...")
-        input_handler = InputHandler(simulate=False)
+        input_handler = InputHandler(display_device=display.device, simulate=False)
         input_handler.start()  # Start polling for button presses
         logger.info("Input handler started")
 
