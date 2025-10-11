@@ -120,6 +120,8 @@ def main():
     if not simulate:
         logger.info("Initializing input handler...")
         input_handler = InputHandler(simulate=False)
+        input_handler.start()  # Start polling for button presses
+        logger.info("Input handler started")
 
     # Initialize screen manager
     logger.info("Setting up screens...")
@@ -198,6 +200,8 @@ def main():
         mopidy.cleanup()
 
         if input_handler:
+            logger.info("Stopping input handler...")
+            input_handler.stop()
             logger.info("Cleaning up input handler...")
             input_handler.cleanup()
 
