@@ -6,9 +6,12 @@ current playlist, playback status, volume, and user settings.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from pathlib import Path
 from loguru import logger
+
+if TYPE_CHECKING:
+    from yoyopy.audio.audio_manager import AudioManager
 
 
 @dataclass
@@ -78,10 +81,18 @@ class AppContext:
     user settings, and system status.
     """
 
-    def __init__(self) -> None:
-        """Initialize application context."""
+    def __init__(self, audio_manager: Optional['AudioManager'] = None) -> None:
+        """
+        Initialize application context.
+
+        Args:
+            audio_manager: Optional AudioManager instance for actual playback
+        """
         # Playback state
         self.playback = PlaybackState()
+
+        # Audio manager (optional, for actual audio playback)
+        self.audio_manager = audio_manager
 
         # Current playlist
         self.current_playlist: Optional[Playlist] = None
@@ -94,7 +105,7 @@ class AppContext:
             "brightness": 100,
             "auto_sleep_minutes": 30,
             "parental_controls_enabled": False,
-            "max_volume": 100,
+            "max_volume": 80,  # Parental control default
         }
 
         # System status
@@ -191,6 +202,11 @@ class AppContext:
         max_volume = self.settings.get("max_volume", 100)
         volume = max(0, min(volume, max_volume))
         self.playback.volume = volume
+
+        # Sync with audio manager if available
+        if self.audio_manager:
+            self.audio_manager.volume = volume
+
         logger.debug(f"Volume set to {volume}")
 
     def volume_up(self, step: int = 5) -> int:
