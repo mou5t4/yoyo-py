@@ -14,6 +14,7 @@ from yoyopy.ui.display import Display
 
 if TYPE_CHECKING:
     from yoyopy.ui.screen_manager import ScreenManager
+    from yoyopy.app_context import AppContext
 
 
 class Screen(ABC):
@@ -24,15 +25,22 @@ class Screen(ABC):
     and handling any screen-specific logic.
     """
 
-    def __init__(self, display: Display, name: str = "Screen") -> None:
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        name: str = "Screen"
+    ) -> None:
         """
         Initialize the screen.
 
         Args:
             display: Display controller instance
+            context: Application context (optional)
             name: Screen name for logging
         """
         self.display = display
+        self.context = context
         self.name = name
         self.screen_manager: Optional['ScreenManager'] = None
         logger.debug(f"Screen '{name}' initialized")
@@ -40,6 +48,10 @@ class Screen(ABC):
     def set_screen_manager(self, manager: 'ScreenManager') -> None:
         """Set the screen manager for navigation."""
         self.screen_manager = manager
+
+    def set_context(self, context: 'AppContext') -> None:
+        """Set the application context."""
+        self.context = context
 
     @abstractmethod
     def render(self) -> None:
@@ -95,8 +107,8 @@ class HomeScreen(Screen):
     - Button A: Open main menu
     """
 
-    def __init__(self, display: Display) -> None:
-        super().__init__(display, "Home")
+    def __init__(self, display: Display, context: Optional['AppContext'] = None) -> None:
+        super().__init__(display, context, "Home")
 
     def render(self) -> None:
         """Render the home screen."""
@@ -105,10 +117,13 @@ class HomeScreen(Screen):
 
         # Draw status bar
         current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
         self.display.status_bar(
             time_str=current_time,
-            battery_percent=85,
-            signal_strength=3
+            battery_percent=battery,
+            signal_strength=signal
         )
 
         # Draw YoyoPod logo text
@@ -192,6 +207,7 @@ class MenuScreen(Screen):
     def __init__(
         self,
         display: Display,
+        context: Optional['AppContext'] = None,
         items: Optional[List[str]] = None,
         selected_index: int = 0
     ) -> None:
@@ -200,10 +216,11 @@ class MenuScreen(Screen):
 
         Args:
             display: Display controller
+            context: Application context
             items: List of menu items
             selected_index: Currently selected item index
         """
-        super().__init__(display, "Menu")
+        super().__init__(display, context, "Menu")
 
         if items is None:
             items = ["Music", "Podcasts", "Audiobooks", "Settings"]
@@ -351,36 +368,38 @@ class NowPlayingScreen(Screen):
     def __init__(
         self,
         display: Display,
-        track_title: str = "Track Title",
-        artist: str = "Artist Name",
-        progress: float = 0.5
+        context: Optional['AppContext'] = None
     ) -> None:
         """
         Initialize now playing screen.
 
         Args:
             display: Display controller
-            track_title: Current track title
-            artist: Artist name
-            progress: Playback progress (0.0 to 1.0)
+            context: Application context
         """
-        super().__init__(display, "NowPlaying")
-        self.track_title = track_title
-        self.artist = artist
-        self.progress = progress
-        self.is_playing = True
+        super().__init__(display, context, "NowPlaying")
 
     def render(self) -> None:
         """Render the now playing screen."""
+        # Get track info from context
+        track = self.context.get_current_track() if self.context else None
+        track_title = track.title if track else "No Track"
+        artist = track.artist if track else "Unknown Artist"
+        progress = self.context.get_playback_progress() if self.context else 0.0
+        is_playing = self.context.playback.is_playing if self.context else False
+
         # Clear display
         self.display.clear(self.display.COLOR_BLACK)
 
         # Draw status bar
         current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
         self.display.status_bar(
             time_str=current_time,
-            battery_percent=85,
-            signal_strength=3
+            battery_percent=battery,
+            signal_strength=signal
         )
 
         # Draw "Now Playing" label
@@ -428,8 +447,8 @@ class NowPlayingScreen(Screen):
 
         # Truncate if too long
         max_title_length = 20
-        display_title = self.track_title[:max_title_length]
-        if len(self.track_title) > max_title_length:
+        display_title = track_title[:max_title_length]
+        if len(track_title) > max_title_length:
             display_title += "..."
 
         title_width, _ = self.display.get_text_size(display_title, title_size)
@@ -448,8 +467,8 @@ class NowPlayingScreen(Screen):
         artist_size = 14
 
         max_artist_length = 25
-        display_artist = self.artist[:max_artist_length]
-        if len(self.artist) > max_artist_length:
+        display_artist = artist[:max_artist_length]
+        if len(artist) > max_artist_length:
             display_artist += "..."
 
         artist_width, _ = self.display.get_text_size(display_artist, artist_size)
@@ -477,7 +496,7 @@ class NowPlayingScreen(Screen):
         )
 
         # Progress
-        filled_width = int(progress_width * self.progress)
+        filled_width = int(progress_width * progress)
         if filled_width > 0:
             self.display.rectangle(
                 progress_x, progress_y,
@@ -487,7 +506,7 @@ class NowPlayingScreen(Screen):
 
         # Draw play/pause indicator
         control_y = self.display.HEIGHT - 20
-        if self.is_playing:
+        if is_playing:
             # Play symbol (simple triangle)
             play_x = self.display.WIDTH // 2 - 5
             self.display.text(
@@ -514,25 +533,11 @@ class NowPlayingScreen(Screen):
         # Update display
         self.display.update()
 
-    def set_track(self, title: str, artist: str) -> None:
-        """Update track information."""
-        self.track_title = title
-        self.artist = artist
-        logger.debug(f"Track updated: {title} - {artist}")
-
-    def set_progress(self, progress: float) -> None:
-        """Update playback progress."""
-        self.progress = max(0.0, min(1.0, progress))
-
-    def toggle_playback(self) -> None:
-        """Toggle play/pause state."""
-        self.is_playing = not self.is_playing
-        logger.debug(f"Playback: {'playing' if self.is_playing else 'paused'}")
-
     # Button handlers
     def on_button_a(self) -> None:
         """Button A: Toggle play/pause."""
-        self.toggle_playback()
+        if self.context:
+            self.context.toggle_playback()
         self.render()
 
     def on_button_b(self) -> None:
@@ -541,9 +546,13 @@ class NowPlayingScreen(Screen):
             self.screen_manager.pop_screen()
 
     def on_button_x(self) -> None:
-        """Button X: Volume up (placeholder)."""
-        logger.info("Volume up (not implemented)")
+        """Button X: Volume up."""
+        if self.context:
+            new_volume = self.context.volume_up()
+            logger.info(f"Volume up: {new_volume}")
 
     def on_button_y(self) -> None:
-        """Button Y: Volume down (placeholder)."""
-        logger.info("Volume down (not implemented)")
+        """Button Y: Volume down."""
+        if self.context:
+            new_volume = self.context.volume_down()
+            logger.info(f"Volume down: {new_volume}")
