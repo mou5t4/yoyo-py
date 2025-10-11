@@ -140,8 +140,8 @@ def main():
     screen_manager.register_screen("menu", menu_screen)
     screen_manager.register_screen("now_playing", now_playing_screen)
 
-    # Set initial screen
-    screen_manager.set_screen("now_playing")
+    # Set initial screen (use push_screen for first screen)
+    screen_manager.push_screen("now_playing")
 
     # Start polling for track changes
     logger.info("Starting track change polling...")
