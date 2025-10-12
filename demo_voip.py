@@ -211,8 +211,10 @@ def main():
         incoming_call_screen.caller_address = caller_address
         incoming_call_screen.caller_name = caller_name
         incoming_call_screen.ring_animation_frame = 0  # Reset animation
-        # Switch to incoming call screen
-        screen_manager.push_screen("incoming_call")
+        # Only push the screen if we're not already showing it
+        # This prevents stacking multiple incoming_call screens
+        if screen_manager.current_screen != incoming_call_screen:
+            screen_manager.push_screen("incoming_call")
 
     voip_manager.on_incoming_call(on_incoming_call)
 
@@ -224,12 +226,13 @@ def main():
             if screen_manager.current_screen != in_call_screen:
                 screen_manager.push_screen("in_call")
         elif state.value == "released":
-            # Call ended, go back to menu or previous screen
-            if screen_manager.current_screen == in_call_screen or \
-               screen_manager.current_screen == incoming_call_screen or \
-               screen_manager.current_screen == outgoing_call_screen:
-                # Pop back to wherever we were before the call
+            # Call ended, clear the screen stack to return to menu
+            # Pop all call-related screens until we're back at menu/contacts
+            while screen_manager.current_screen in [in_call_screen, incoming_call_screen, outgoing_call_screen]:
                 screen_manager.pop_screen()
+                # Safety check to prevent infinite loop
+                if not screen_manager.screen_stack:
+                    break
 
     voip_manager.on_call_state_change(on_call_state_change)
 
