@@ -150,6 +150,7 @@ use_info=0
 use_rfc2833=1
 use_ipv6=0
 record_aware=0
+media_encryption=srtp
 
 [auth_info_0]
 username={self.config.sip_username}
