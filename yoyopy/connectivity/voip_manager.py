@@ -372,14 +372,15 @@ echocancellation=1
             self._update_registration_state(RegistrationState.CLEARED)
 
         # Parse call state and extract caller info
-        # Linphone 5.x uses "CallSession" instead of just "Call"
-        if "Call" in line or "CallSession" in line:
+        # Look for lines containing call information (case-insensitive)
+        line_lower = line.lower()
+        if "call" in line_lower or "callsession" in line_lower:
             # Try to extract SIP address from line
             # Linphone format examples:
             # - Linphone 5.x: "New incoming call from [sip:user@domain]"
             # - Linphone 4.x: "Receiving new incoming call from <sip:user@domain>"
             # - Linphone 4.x: "Call from <sip:user@domain>"
-            if "from" in line.lower():
+            if "from" in line_lower:
                 # Try Linphone 5.x format with square brackets [sip:...]
                 if "[sip:" in line:
                     start = line.find("[sip:")
