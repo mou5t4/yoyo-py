@@ -8,6 +8,7 @@ for different application states.
 from abc import ABC, abstractmethod
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
+import threading
 from loguru import logger
 
 from yoyopy.ui.display import Display
@@ -1602,6 +1603,8 @@ class InCallScreen(Screen):
         """
         super().__init__(display, context, "InCall")
         self.voip_manager = voip_manager
+        self.refresh_thread = None
+        self.refresh_stop_event = None
 
     def format_duration(self, seconds: int) -> str:
         """
@@ -1801,6 +1804,40 @@ class InCallScreen(Screen):
             logger.info(f"Mute toggled: {'muted' if is_muted else 'unmuted'}")
             # Re-render to show mute status
             self.render()
+
+    def enter(self) -> None:
+        """Called when screen becomes active - start auto-refresh thread."""
+        super().enter()
+        # Start refresh thread for live duration updates
+        self.refresh_stop_event = threading.Event()
+        self.refresh_thread = threading.Thread(
+            target=self._refresh_loop,
+            daemon=True
+        )
+        self.refresh_thread.start()
+        logger.debug("InCallScreen auto-refresh thread started")
+
+    def exit(self) -> None:
+        """Called when screen becomes inactive - stop auto-refresh thread."""
+        super().exit()
+        # Stop refresh thread
+        if self.refresh_stop_event:
+            self.refresh_stop_event.set()
+        if self.refresh_thread:
+            self.refresh_thread.join(timeout=1)
+            self.refresh_thread = None
+        self.refresh_stop_event = None
+        logger.debug("InCallScreen auto-refresh thread stopped")
+
+    def _refresh_loop(self) -> None:
+        """Background thread to refresh display every second."""
+        while not self.refresh_stop_event.is_set():
+            try:
+                self.render()
+            except Exception as e:
+                logger.error(f"Error in refresh loop: {e}")
+            # Wait 1 second before next refresh
+            self.refresh_stop_event.wait(1.0)
 
 
 class ContactListScreen(Screen):
@@ -2051,12 +2088,11 @@ class ContactListScreen(Screen):
         contact = self.contacts[self.selected_index]
         logger.info(f"Calling contact: {contact.name} at {contact.sip_address}")
 
-        # Make the call
-        if self.voip_manager.make_call(contact.sip_address):
+        # Make the call with contact name
+        if self.voip_manager.make_call(contact.sip_address, contact_name=contact.name):
             logger.info(f"Call initiated to {contact.name}")
             # Navigate to outgoing call screen
             if self.screen_manager:
-                # TODO: Pass contact info to outgoing call screen
                 self.screen_manager.push_screen("outgoing_call")
         else:
             logger.error(f"Failed to initiate call to {contact.name}")

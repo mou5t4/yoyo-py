@@ -79,9 +79,9 @@ def main():
     logger.info("Configuring VoIP...")
     voip_config = VoIPConfig.from_config_manager(config_manager)
 
-    # Initialize VoIP manager
+    # Initialize VoIP manager with config_manager for contact lookup
     logger.info("Starting VoIP manager...")
-    voip_manager = VoIPManager(voip_config)
+    voip_manager = VoIPManager(voip_config, config_manager=config_manager)
 
     # Log loaded contacts
     contacts = config_manager.get_contacts()

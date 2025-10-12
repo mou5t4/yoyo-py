@@ -83,14 +83,16 @@ class VoIPManager:
     Manages SIP registration and call handling through linphonec subprocess.
     """
 
-    def __init__(self, config: VoIPConfig) -> None:
+    def __init__(self, config: VoIPConfig, config_manager=None) -> None:
         """
         Initialize VoIP manager.
 
         Args:
             config: VoIP configuration
+            config_manager: Optional ConfigManager for contact name lookup
         """
         self.config = config
+        self.config_manager = config_manager  # For contact lookup
         self.process: Optional[subprocess.Popen] = None
         self.running = False
         self.registered = False
@@ -378,8 +380,9 @@ echocancellation=1
                 end = line.find(">", start)
                 if start != -1 and end != -1:
                     self.caller_address = line[start+1:end]  # Remove < >
-                    self.caller_name = None  # Will be set if display name present
-                    logger.debug(f"Extracted caller address: {self.caller_address}")
+                    # Look up contact name from config_manager
+                    self.caller_name = self._lookup_contact_name(self.caller_address)
+                    logger.debug(f"Extracted caller address: {self.caller_address}, name: {self.caller_name}")
 
             if "incoming" in line.lower():
                 self._update_call_state(CallState.INCOMING)
@@ -442,12 +445,13 @@ echocancellation=1
                 except Exception as e:
                     logger.error(f"Error in call state callback: {e}")
 
-    def make_call(self, sip_address: str) -> bool:
+    def make_call(self, sip_address: str, contact_name: str = None) -> bool:
         """
         Initiate outgoing call.
 
         Args:
             sip_address: SIP address to call (e.g., sip:user@domain)
+            contact_name: Optional contact name (will be looked up if not provided)
 
         Returns:
             True if call initiated successfully
@@ -456,7 +460,11 @@ echocancellation=1
             logger.error("Cannot make call: not registered")
             return False
 
-        logger.info(f"Making call to: {sip_address}")
+        # Store caller info for outgoing call
+        self.caller_address = sip_address
+        self.caller_name = contact_name or self._lookup_contact_name(sip_address)
+
+        logger.info(f"Making call to: {self.caller_name} ({sip_address})")
         return self._send_command(f"call {sip_address}")
 
     def answer_call(self) -> bool:
@@ -583,10 +591,14 @@ echocancellation=1
         Returns:
             Dictionary with caller information
         """
+        # If we have an address but no name, look it up
+        if self.caller_address and not self.caller_name:
+            self.caller_name = self._lookup_contact_name(self.caller_address)
+
         return {
             "address": self.caller_address,
             "name": self.caller_name or self.caller_address,
-            "display_name": self.caller_name or self._extract_username(self.caller_address)
+            "display_name": self.caller_name or self._lookup_contact_name(self.caller_address)
         }
 
     def _extract_username(self, sip_address: Optional[str]) -> str:
@@ -609,6 +621,29 @@ echocancellation=1
                 return username_part.split(":")[-1]
             return username_part
         return sip_address
+
+    def _lookup_contact_name(self, sip_address: Optional[str]) -> str:
+        """
+        Look up contact name from SIP address.
+
+        Args:
+            sip_address: SIP URI to look up
+
+        Returns:
+            Contact name if found, otherwise extracted username
+        """
+        if not sip_address:
+            return "Unknown"
+
+        # Try to look up contact in config_manager
+        if self.config_manager:
+            contact = self.config_manager.get_contact_by_address(sip_address)
+            if contact:
+                logger.debug(f"Found contact: {contact.name} for {sip_address}")
+                return contact.name
+
+        # Fall back to extracting username from SIP address
+        return self._extract_username(sip_address)
 
     def _start_call_timer(self) -> None:
         """Start tracking call duration."""
