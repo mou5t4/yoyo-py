@@ -8,8 +8,9 @@ account:
   # SIP username (without @domain)
   sip_username: "tifo"
 
-  # SIP password (leave empty to use saved credentials from .linphonerc)
-  sip_password: ""
+  # SIP password HA1 hash (SHA-256)
+  # This is the hashed password from .linphonerc for secure storage
+  sip_password_ha1: "846b52c8563e31b8649afce1eea8cd1e67993182e5d623881948d83d1f77e643"
 
   # Full SIP identity (sip:username@server)
   sip_identity: "sip:tifo@sip.linphone.org"

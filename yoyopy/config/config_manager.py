@@ -216,6 +216,10 @@ class ConfigManager:
         """Get SIP password."""
         return self.voip_config.get('account', {}).get('sip_password', '')
 
+    def get_sip_password_ha1(self) -> str:
+        """Get SIP password HA1 hash."""
+        return self.voip_config.get('account', {}).get('sip_password_ha1', '')
+
     def get_sip_identity(self) -> str:
         """Get SIP identity."""
         return self.voip_config.get('account', {}).get('sip_identity', '')
