@@ -30,7 +30,14 @@ logger.add(
 )
 
 from yoyopy.ui.display import Display
-from yoyopy.ui.screens import CallScreen, MenuScreen
+from yoyopy.ui.screens import (
+    CallScreen,
+    MenuScreen,
+    ContactListScreen,
+    IncomingCallScreen,
+    OutgoingCallScreen,
+    InCallScreen
+)
 from yoyopy.ui.screen_manager import ScreenManager
 from yoyopy.ui.input_handler import InputHandler
 from yoyopy.app_context import AppContext
@@ -150,7 +157,7 @@ def main():
     screen_manager = ScreenManager(display, input_handler)
 
     # Create menu screen
-    menu_items = ["VoIP Status", "Back"]
+    menu_items = ["VoIP Status", "Call Contact"]
     menu_screen = MenuScreen(display, context, items=menu_items)
 
     # Create call screen with VoIP manager and config manager
@@ -161,20 +168,61 @@ def main():
         config_manager=config_manager
     )
 
+    # Create contact list screen
+    contact_list_screen = ContactListScreen(
+        display,
+        context,
+        voip_manager=voip_manager,
+        config_manager=config_manager
+    )
+
+    # Create outgoing call screen
+    outgoing_call_screen = OutgoingCallScreen(
+        display,
+        context,
+        voip_manager=voip_manager
+    )
+
+    # Create incoming call screen
+    incoming_call_screen = IncomingCallScreen(
+        display,
+        context,
+        voip_manager=voip_manager
+    )
+
+    # Create in-call screen
+    in_call_screen = InCallScreen(
+        display,
+        context,
+        voip_manager=voip_manager
+    )
+
     # Register screens
     screen_manager.register_screen("menu", menu_screen)
     screen_manager.register_screen("call", call_screen)
+    screen_manager.register_screen("contacts", contact_list_screen)
+    screen_manager.register_screen("outgoing_call", outgoing_call_screen)
+    screen_manager.register_screen("incoming_call", incoming_call_screen)
+    screen_manager.register_screen("in_call", in_call_screen)
 
-    # Set initial screen (start with call screen to show VoIP status)
-    screen_manager.push_screen("call")
+    # Set initial screen (start with menu)
+    screen_manager.push_screen("menu")
 
     # Show instructions
     logger.info("")
     logger.info("VoIP Demo Running!")
     logger.info("-" * 60)
     logger.info("Navigation:")
-    logger.info("  Call Screen:")
+    logger.info("  Menu Screen:")
+    logger.info("    A - Select item")
+    logger.info("    X/Y - Navigate menu")
+    logger.info("  Contact List:")
+    logger.info("    A - Call selected contact")
     logger.info("    B - Back to menu")
+    logger.info("    X/Y - Navigate contacts")
+    logger.info("  During Call:")
+    logger.info("    X - Toggle mute")
+    logger.info("    B - End call")
     logger.info("")
     logger.info("VoIP Status:")
     status = voip_manager.get_status()

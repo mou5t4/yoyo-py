@@ -334,7 +334,7 @@ class MenuScreen(Screen):
                 self.screen_manager.push_screen("now_playing")
             elif selected_item == "Browse Playlists" or selected_item == "Playlists":
                 self.screen_manager.push_screen("playlists")
-            elif selected_item == "Call Parent" or selected_item == "Call":
+            elif selected_item == "Call Parent" or selected_item == "Call" or selected_item == "Call Contact":
                 self.screen_manager.push_screen("contacts")
             elif selected_item == "VoIP Status":
                 self.screen_manager.push_screen("call")
