@@ -1,0 +1,26 @@
+# VoIP Contacts
+# List of contacts for quick dialing
+
+contacts:
+  # Example contacts (replace with your actual contacts)
+  - name: "Echo Test Service"
+    sip_address: "sip:echo@sip.linphone.org"
+    favorite: true
+    notes: "Linphone echo test - your voice will be played back"
+
+  - name: "Test User"
+    sip_address: "sip:test@sip.linphone.org"
+    favorite: false
+    notes: "Test contact"
+
+  # Add your contacts here:
+  # - name: "John Doe"
+  #   sip_address: "sip:john@example.com"
+  #   favorite: true
+  #   notes: "Work colleague"
+
+# Speed dial shortcuts (optional)
+speed_dial:
+  1: "sip:echo@sip.linphone.org"  # Speed dial #1
+  # 2: "sip:emergency@example.com"
+  # 3: "sip:family@example.com"

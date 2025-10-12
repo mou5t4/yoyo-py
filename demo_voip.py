@@ -35,6 +35,7 @@ from yoyopy.ui.screen_manager import ScreenManager
 from yoyopy.ui.input_handler import InputHandler
 from yoyopy.app_context import AppContext
 from yoyopy.connectivity import VoIPManager, VoIPConfig, RegistrationState
+from yoyopy.config import ConfigManager
 
 
 def main():
@@ -63,20 +64,23 @@ def main():
     # Initialize app context
     context = AppContext()
 
-    # Configure VoIP (using linphone.org test account)
+    # Load configuration
+    logger.info("Loading configuration...")
+    config_manager = ConfigManager(config_dir="config")
+
+    # Create VoIP config from ConfigManager
     logger.info("Configuring VoIP...")
-    voip_config = VoIPConfig(
-        sip_server="sip.linphone.org",
-        sip_username="tifo",
-        sip_password="",  # Will use saved credentials from .linphonerc
-        sip_identity="sip:tifo@sip.linphone.org",
-        transport="tcp",
-        linphonec_path="/usr/bin/linphonec"
-    )
+    voip_config = VoIPConfig.from_config_manager(config_manager)
 
     # Initialize VoIP manager
     logger.info("Starting VoIP manager...")
     voip_manager = VoIPManager(voip_config)
+
+    # Log loaded contacts
+    contacts = config_manager.get_contacts()
+    logger.info(f"Loaded {len(contacts)} contacts:")
+    for contact in contacts[:5]:  # Show first 5
+        logger.info(f"  - {contact.name}: {contact.sip_address}")
 
     # Register callback for registration state changes
     def on_registration_change(state: RegistrationState):
@@ -149,11 +153,12 @@ def main():
     menu_items = ["VoIP Status", "Back"]
     menu_screen = MenuScreen(display, context, items=menu_items)
 
-    # Create call screen with VoIP manager
+    # Create call screen with VoIP manager and config manager
     call_screen = CallScreen(
         display,
         context,
-        voip_manager=voip_manager
+        voip_manager=voip_manager,
+        config_manager=config_manager
     )
 
     # Register screens

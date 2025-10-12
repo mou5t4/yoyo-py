@@ -52,6 +52,27 @@ class VoIPConfig:
     stun_server: str = ""
     linphonec_path: str = "/usr/bin/linphonec"
 
+    @staticmethod
+    def from_config_manager(config_manager) -> 'VoIPConfig':
+        """
+        Create VoIPConfig from ConfigManager.
+
+        Args:
+            config_manager: ConfigManager instance
+
+        Returns:
+            VoIPConfig instance
+        """
+        return VoIPConfig(
+            sip_server=config_manager.get_sip_server(),
+            sip_username=config_manager.get_sip_username(),
+            sip_password=config_manager.get_sip_password(),
+            sip_identity=config_manager.get_sip_identity(),
+            transport=config_manager.get_transport(),
+            stun_server=config_manager.get_stun_server(),
+            linphonec_path=config_manager.get_linphonec_path()
+        )
+
 
 class VoIPManager:
     """

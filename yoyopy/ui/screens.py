@@ -974,7 +974,8 @@ class CallScreen(Screen):
         self,
         display: Display,
         context: Optional['AppContext'] = None,
-        voip_manager=None
+        voip_manager=None,
+        config_manager=None
     ) -> None:
         """
         Initialize call screen.
@@ -983,9 +984,11 @@ class CallScreen(Screen):
             display: Display controller
             context: Application context
             voip_manager: VoIPManager instance
+            config_manager: ConfigManager instance for contacts
         """
         super().__init__(display, context, "Call")
         self.voip_manager = voip_manager
+        self.config_manager = config_manager
 
     def render(self) -> None:
         """Render the call screen."""

@@ -1,0 +1,52 @@
+# VoIP Account Configuration
+# This file contains SIP account settings for VoIP calls
+
+account:
+  # SIP server address (e.g., sip.linphone.org, your-pbx.com)
+  sip_server: "sip.linphone.org"
+
+  # SIP username (without @domain)
+  sip_username: "tifo"
+
+  # SIP password (leave empty to use saved credentials from .linphonerc)
+  sip_password: ""
+
+  # Full SIP identity (sip:username@server)
+  sip_identity: "sip:tifo@sip.linphone.org"
+
+  # Transport protocol: tcp, udp, or tls
+  transport: "tcp"
+
+  # Display name for outgoing calls
+  display_name: "YoyoPod"
+
+# Network settings
+network:
+  # STUN server for NAT traversal (helps with firewall/router issues)
+  stun_server: "stun.linphone.org"
+
+  # Enable ICE (Interactive Connectivity Establishment)
+  enable_ice: true
+
+# Audio settings
+audio:
+  # Preferred audio codec (e.g., opus, pcmu, pcma, speex)
+  preferred_codec: "opus"
+
+  # Enable echo cancellation
+  echo_cancellation: true
+
+  # Microphone gain (0-100)
+  mic_gain: 80
+
+  # Speaker volume (0-100)
+  speaker_volume: 80
+
+# Path to linphonec executable
+linphonec_path: "/usr/bin/linphonec"
+
+# Auto-answer incoming calls (for testing)
+auto_answer: false
+
+# Call timeout in seconds (0 = no timeout)
+call_timeout: 60
