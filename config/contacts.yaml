@@ -8,8 +8,8 @@ contacts:
     favorite: true
     notes: "Linphone echo test - your voice will be played back"
 
-  - name: "Test User"
-    sip_address: "sip:test@sip.linphone.org"
+  - name: "Hagar"
+    sip_address: "sip:hagarmo@sip.linphone.org"
     favorite: false
     notes: "Test contact"
 
@@ -22,5 +22,5 @@ contacts:
 # Speed dial shortcuts (optional)
 speed_dial:
   1: "sip:echo@sip.linphone.org"  # Speed dial #1
-  # 2: "sip:emergency@example.com"
+  2: "sip:hagarmo@sip.linphone.org"
   # 3: "sip:family@example.com"
