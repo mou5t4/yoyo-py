@@ -372,9 +372,12 @@ echocancellation=1
             self._update_registration_state(RegistrationState.CLEARED)
 
         # Parse call state and extract caller info
-        if "Call" in line:
+        # Linphone 5.x uses "CallSession" instead of just "Call"
+        if "Call" in line or "CallSession" in line:
             # Try to extract SIP address from line
-            # Linphone format: "Receiving new incoming call from <sip:user@domain>"
+            # Linphone format examples:
+            # - "Receiving new incoming call from <sip:user@domain>"
+            # - "Call from <sip:user@domain>"
             if "from" in line.lower() and "<sip:" in line:
                 start = line.find("<sip:")
                 end = line.find(">", start)
@@ -384,7 +387,8 @@ echocancellation=1
                     self.caller_name = self._lookup_contact_name(self.caller_address)
                     logger.debug(f"Extracted caller address: {self.caller_address}, name: {self.caller_name}")
 
-            if "incoming" in line.lower():
+            # Linphone 5.x pattern: "LinphoneCallIncoming"
+            if "LinphoneCallIncoming" in line or "incoming" in line.lower():
                 self._update_call_state(CallState.INCOMING)
                 # Fire incoming call callbacks
                 if self.caller_address:
@@ -395,11 +399,11 @@ echocancellation=1
                             logger.error(f"Error in incoming call callback: {e}")
             elif "outgoing" in line.lower():
                 self._update_call_state(CallState.OUTGOING)
-            elif "connected" in line.lower() or "streams running" in line.lower():
+            elif "connected" in line.lower() or "streams running" in line.lower() or "LinphoneCallConnected" in line:
                 self._update_call_state(CallState.CONNECTED)
                 if not self.call_start_time:
                     self._start_call_timer()
-            elif "released" in line.lower() or "ended" in line.lower():
+            elif "released" in line.lower() or "ended" in line.lower() or "LinphoneCallReleased" in line:
                 self._update_call_state(CallState.RELEASED)
                 self._stop_call_timer()
                 self.current_call_id = None
