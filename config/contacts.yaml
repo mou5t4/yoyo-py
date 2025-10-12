@@ -10,8 +10,8 @@ contacts:
 
   - name: "Hagar"
     sip_address: "sip:hagarmo@sip.linphone.org"
-    favorite: false
-    notes: "Test contact"
+    favorite: true
+    notes: "Mama"
 
   # Add your contacts here:
   # - name: "John Doe"
