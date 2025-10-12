@@ -358,6 +358,15 @@ echocancellation=1
             self._update_registration_state(RegistrationState.CLEARED)
         elif "Refreshing" in line and "registration" in line:
             logger.debug("Registration refresh in progress")
+        # New pattern for Linphone 5.x
+        elif "LinphoneRegistrationOk" in line or ("Registration successful" in line and "reason" in line):
+            self._update_registration_state(RegistrationState.OK)
+        elif "LinphoneRegistrationProgress" in line:
+            self._update_registration_state(RegistrationState.PROGRESS)
+        elif "LinphoneRegistrationFailed" in line or ("Registration failed" in line and "reason" in line):
+            self._update_registration_state(RegistrationState.FAILED)
+        elif "LinphoneRegistrationCleared" in line:
+            self._update_registration_state(RegistrationState.CLEARED)
 
         # Parse call state and extract caller info
         if "Call" in line:
