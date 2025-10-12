@@ -205,8 +205,12 @@ def main():
 
     voip_manager.on_registration_change(on_registration_change)
 
-    def on_incoming_call(caller_name: str, caller_address: str):
+    def on_incoming_call(caller_address: str, caller_name: str):
         logger.info(f"Incoming call from: {caller_name} ({caller_address})")
+        # Update incoming call screen with caller information
+        incoming_call_screen.caller_address = caller_address
+        incoming_call_screen.caller_name = caller_name
+        incoming_call_screen.ring_animation_frame = 0  # Reset animation
         # Switch to incoming call screen
         screen_manager.push_screen("incoming_call")
 
