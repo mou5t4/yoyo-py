@@ -22,6 +22,8 @@ class AppState(Enum):
     SETTINGS = "settings"            # Settings screen
     PLAYLIST = "playlist"            # Playlist/library view
     PLAYLIST_BROWSER = "playlist_browser"  # Browsing Mopidy playlists
+    CALL_IDLE = "call_idle"          # VoIP ready, no active call
+    CALLING = "calling"              # Active VoIP call (outgoing/incoming/connected)
     CONNECTING = "connecting"        # Network connection setup
     ERROR = "error"                  # Error state
 
@@ -86,6 +88,7 @@ class StateMachine:
             StateTransition(AppState.MENU, AppState.PLAYING, "select_media"),
             StateTransition(AppState.MENU, AppState.PLAYLIST, "select_playlist"),
             StateTransition(AppState.MENU, AppState.PLAYLIST_BROWSER, "browse_playlists"),
+            StateTransition(AppState.MENU, AppState.CALL_IDLE, "open_voip"),
             StateTransition(AppState.MENU, AppState.SETTINGS, "select_settings"),
 
             # From PLAYING
@@ -105,6 +108,15 @@ class StateMachine:
             # From PLAYLIST_BROWSER
             StateTransition(AppState.PLAYLIST_BROWSER, AppState.MENU, "back"),
             StateTransition(AppState.PLAYLIST_BROWSER, AppState.PLAYING, "load_playlist"),
+
+            # From CALL_IDLE
+            StateTransition(AppState.CALL_IDLE, AppState.MENU, "back"),
+            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "make_call"),
+            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "incoming_call"),
+
+            # From CALLING
+            StateTransition(AppState.CALLING, AppState.CALL_IDLE, "call_ended"),
+            StateTransition(AppState.CALLING, AppState.MENU, "back"),
 
             # From SETTINGS
             StateTransition(AppState.SETTINGS, AppState.MENU, "back"),
