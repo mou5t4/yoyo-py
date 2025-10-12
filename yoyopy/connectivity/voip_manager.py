@@ -376,16 +376,45 @@ echocancellation=1
         if "Call" in line or "CallSession" in line:
             # Try to extract SIP address from line
             # Linphone format examples:
-            # - "Receiving new incoming call from <sip:user@domain>"
-            # - "Call from <sip:user@domain>"
-            if "from" in line.lower() and "<sip:" in line:
-                start = line.find("<sip:")
-                end = line.find(">", start)
-                if start != -1 and end != -1:
-                    self.caller_address = line[start+1:end]  # Remove < >
-                    # Look up contact name from config_manager
-                    self.caller_name = self._lookup_contact_name(self.caller_address)
-                    logger.debug(f"Extracted caller address: {self.caller_address}, name: {self.caller_name}")
+            # - Linphone 5.x: "New incoming call from [sip:user@domain]"
+            # - Linphone 4.x: "Receiving new incoming call from <sip:user@domain>"
+            # - Linphone 4.x: "Call from <sip:user@domain>"
+            if "from" in line.lower():
+                # Try Linphone 5.x format with square brackets [sip:...]
+                if "[sip:" in line:
+                    start = line.find("[sip:")
+                    end = line.find("]", start)
+                    if start != -1 and end != -1:
+                        self.caller_address = line[start+1:end]  # Remove [ ]
+                        self.caller_name = self._lookup_contact_name(self.caller_address)
+                        logger.debug(f"Extracted caller address: {self.caller_address}, name: {self.caller_name}")
+                # Try Linphone 4.x format with angle brackets <sip:...>
+                elif "<sip:" in line:
+                    start = line.find("<sip:")
+                    end = line.find(">", start)
+                    if start != -1 and end != -1:
+                        self.caller_address = line[start+1:end]  # Remove < >
+                        self.caller_name = self._lookup_contact_name(self.caller_address)
+                        logger.debug(f"Extracted caller address: {self.caller_address}, name: {self.caller_name}")
+                # Fallback: try to extract plain sip: address
+                elif "sip:" in line.lower():
+                    # Extract from "from sip:user@domain" or similar
+                    parts = line.lower().split("from")
+                    if len(parts) > 1:
+                        # Get everything after "from"
+                        after_from = parts[1].strip()
+                        # Extract sip address
+                        if after_from.startswith("sip:"):
+                            # Find end of SIP address (space, comma, or end of line)
+                            end_chars = [' ', ',', '\t', '\n']
+                            end_pos = len(after_from)
+                            for char in end_chars:
+                                pos = after_from.find(char)
+                                if pos != -1 and pos < end_pos:
+                                    end_pos = pos
+                            self.caller_address = after_from[:end_pos]
+                            self.caller_name = self._lookup_contact_name(self.caller_address)
+                            logger.debug(f"Extracted caller address (fallback): {self.caller_address}, name: {self.caller_name}")
 
             # Linphone 5.x pattern: "LinphoneCallIncoming"
             if "LinphoneCallIncoming" in line or "incoming" in line.lower():
