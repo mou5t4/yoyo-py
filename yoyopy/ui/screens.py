@@ -334,6 +334,10 @@ class MenuScreen(Screen):
                 self.screen_manager.push_screen("now_playing")
             elif selected_item == "Browse Playlists" or selected_item == "Playlists":
                 self.screen_manager.push_screen("playlists")
+            elif selected_item == "Call Parent" or selected_item == "Call":
+                self.screen_manager.push_screen("contacts")
+            elif selected_item == "VoIP Status":
+                self.screen_manager.push_screen("call")
             elif selected_item == "Settings":
                 logger.info("Settings not implemented yet")
 
@@ -1159,3 +1163,920 @@ class CallScreen(Screen):
         """Button Y: Reserved for dial pad."""
         # TODO: Implement dial pad
         pass
+
+
+class IncomingCallScreen(Screen):
+    """
+    Incoming call screen showing caller information.
+
+    Displays incoming call with caller name/address and answer/reject options.
+
+    Button mapping:
+    - Button A: Answer call
+    - Button B: Reject call
+    """
+
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        voip_manager=None,
+        caller_address: str = "",
+        caller_name: str = "Unknown"
+    ) -> None:
+        """
+        Initialize incoming call screen.
+
+        Args:
+            display: Display controller
+            context: Application context
+            voip_manager: VoIPManager instance
+            caller_address: SIP address of caller
+            caller_name: Display name of caller
+        """
+        super().__init__(display, context, "IncomingCall")
+        self.voip_manager = voip_manager
+        self.caller_address = caller_address
+        self.caller_name = caller_name
+        self.ring_animation_frame = 0
+
+    def render(self) -> None:
+        """Render the incoming call screen."""
+        # Clear display
+        self.display.clear(self.display.COLOR_BLACK)
+
+        # Draw status bar
+        current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
+        self.display.status_bar(
+            time_str=current_time,
+            battery_percent=battery,
+            signal_strength=signal
+        )
+
+        # Draw "Incoming Call" title
+        title = "Incoming Call"
+        title_size = 20
+        title_width, title_height = self.display.get_text_size(title, title_size)
+        title_x = (self.display.WIDTH - title_width) // 2
+        title_y = self.display.STATUS_BAR_HEIGHT + 15
+
+        self.display.text(
+            title,
+            title_x,
+            title_y,
+            color=self.display.COLOR_CYAN,
+            font_size=title_size
+        )
+
+        # Draw separator line
+        separator_y = title_y + title_height + 10
+        self.display.line(
+            20, separator_y,
+            self.display.WIDTH - 20, separator_y,
+            color=self.display.COLOR_GRAY,
+            width=2
+        )
+
+        content_y = separator_y + 30
+
+        # Draw caller icon (phone with ringing animation)
+        icon_x = self.display.WIDTH // 2
+        icon_y = content_y + 20
+        icon_radius = 25
+
+        # Animate ring (pulsing circle)
+        ring_color = self.display.COLOR_GREEN if self.ring_animation_frame % 2 == 0 else self.display.COLOR_CYAN
+        self.display.circle(
+            icon_x,
+            icon_y,
+            icon_radius,
+            outline=ring_color,
+            width=3
+        )
+
+        # Inner phone icon
+        self.display.text(
+            "☎",
+            icon_x - 10,
+            icon_y - 10,
+            color=self.display.COLOR_WHITE,
+            font_size=20
+        )
+
+        # Update animation frame for next render
+        self.ring_animation_frame += 1
+
+        # Draw caller name
+        name_y = icon_y + icon_radius + 30
+        name_size = 18
+
+        # Truncate if too long
+        max_name_length = 20
+        display_name = self.caller_name[:max_name_length]
+        if len(self.caller_name) > max_name_length:
+            display_name = display_name[:-3] + "..."
+
+        name_width, _ = self.display.get_text_size(display_name, name_size)
+        name_x = (self.display.WIDTH - name_width) // 2
+
+        self.display.text(
+            display_name,
+            name_x,
+            name_y,
+            color=self.display.COLOR_WHITE,
+            font_size=name_size
+        )
+
+        # Draw caller address (smaller, below name)
+        if self.caller_address:
+            address_y = name_y + 25
+            address_size = 12
+
+            # Truncate long address
+            max_addr_length = 30
+            display_addr = self.caller_address[:max_addr_length]
+            if len(self.caller_address) > max_addr_length:
+                display_addr = display_addr[:-3] + "..."
+
+            addr_width, _ = self.display.get_text_size(display_addr, address_size)
+            addr_x = (self.display.WIDTH - addr_width) // 2
+
+            self.display.text(
+                display_addr,
+                addr_x,
+                address_y,
+                color=self.display.COLOR_GRAY,
+                font_size=address_size
+            )
+
+        # Draw button instructions at bottom
+        instructions_y = self.display.HEIGHT - 15
+        instructions_size = 12
+
+        # Answer button (A)
+        answer_text = "A: Answer"
+        answer_width, _ = self.display.get_text_size(answer_text, instructions_size)
+        answer_x = 20
+
+        self.display.text(
+            answer_text,
+            answer_x,
+            instructions_y,
+            color=self.display.COLOR_GREEN,
+            font_size=instructions_size
+        )
+
+        # Reject button (B)
+        reject_text = "B: Reject"
+        reject_width, _ = self.display.get_text_size(reject_text, instructions_size)
+        reject_x = self.display.WIDTH - reject_width - 20
+
+        self.display.text(
+            reject_text,
+            reject_x,
+            instructions_y,
+            color=self.display.COLOR_RED,
+            font_size=instructions_size
+        )
+
+        # Update display
+        self.display.update()
+
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Answer call."""
+        logger.info("Answering incoming call")
+        if self.voip_manager:
+            if self.voip_manager.answer_call():
+                logger.info("Call answered, transitioning to InCall screen")
+                # Navigate to in-call screen
+                if self.screen_manager:
+                    self.screen_manager.push_screen("in_call")
+            else:
+                logger.error("Failed to answer call")
+
+    def on_button_b(self) -> None:
+        """Button B: Reject call."""
+        logger.info("Rejecting incoming call")
+        if self.voip_manager:
+            if self.voip_manager.reject_call():
+                logger.info("Call rejected, going back")
+                # Go back to previous screen
+                if self.screen_manager:
+                    self.screen_manager.pop_screen()
+            else:
+                logger.error("Failed to reject call")
+
+
+class OutgoingCallScreen(Screen):
+    """
+    Outgoing call screen showing callee information.
+
+    Displays outgoing call with callee name/address and cancel option.
+
+    Button mapping:
+    - Button B: Cancel call
+    """
+
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        voip_manager=None,
+        callee_address: str = "",
+        callee_name: str = "Unknown"
+    ) -> None:
+        """
+        Initialize outgoing call screen.
+
+        Args:
+            display: Display controller
+            context: Application context
+            voip_manager: VoIPManager instance
+            callee_address: SIP address of callee
+            callee_name: Display name of callee
+        """
+        super().__init__(display, context, "OutgoingCall")
+        self.voip_manager = voip_manager
+        self.callee_address = callee_address
+        self.callee_name = callee_name
+        self.ring_animation_frame = 0
+
+    def render(self) -> None:
+        """Render the outgoing call screen."""
+        # Clear display
+        self.display.clear(self.display.COLOR_BLACK)
+
+        # Draw status bar
+        current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
+        self.display.status_bar(
+            time_str=current_time,
+            battery_percent=battery,
+            signal_strength=signal
+        )
+
+        # Draw "Calling..." title
+        title = "Calling..."
+        title_size = 20
+        title_width, title_height = self.display.get_text_size(title, title_size)
+        title_x = (self.display.WIDTH - title_width) // 2
+        title_y = self.display.STATUS_BAR_HEIGHT + 15
+
+        self.display.text(
+            title,
+            title_x,
+            title_y,
+            color=self.display.COLOR_YELLOW,
+            font_size=title_size
+        )
+
+        # Draw separator line
+        separator_y = title_y + title_height + 10
+        self.display.line(
+            20, separator_y,
+            self.display.WIDTH - 20, separator_y,
+            color=self.display.COLOR_GRAY,
+            width=2
+        )
+
+        content_y = separator_y + 30
+
+        # Draw calling icon (phone with outgoing animation)
+        icon_x = self.display.WIDTH // 2
+        icon_y = content_y + 20
+        icon_radius = 25
+
+        # Animate outgoing call (pulsing circle)
+        ring_color = self.display.COLOR_YELLOW if self.ring_animation_frame % 2 == 0 else self.display.COLOR_CYAN
+        self.display.circle(
+            icon_x,
+            icon_y,
+            icon_radius,
+            outline=ring_color,
+            width=3
+        )
+
+        # Inner phone icon with arrow
+        self.display.text(
+            "☎",
+            icon_x - 10,
+            icon_y - 10,
+            color=self.display.COLOR_WHITE,
+            font_size=20
+        )
+
+        # Outgoing arrow
+        self.display.text(
+            "→",
+            icon_x + 15,
+            icon_y - 5,
+            color=self.display.COLOR_YELLOW,
+            font_size=16
+        )
+
+        # Update animation frame for next render
+        self.ring_animation_frame += 1
+
+        # Draw callee name
+        name_y = icon_y + icon_radius + 30
+        name_size = 18
+
+        # Truncate if too long
+        max_name_length = 20
+        display_name = self.callee_name[:max_name_length]
+        if len(self.callee_name) > max_name_length:
+            display_name = display_name[:-3] + "..."
+
+        name_width, _ = self.display.get_text_size(display_name, name_size)
+        name_x = (self.display.WIDTH - name_width) // 2
+
+        self.display.text(
+            display_name,
+            name_x,
+            name_y,
+            color=self.display.COLOR_WHITE,
+            font_size=name_size
+        )
+
+        # Draw callee address (smaller, below name)
+        if self.callee_address:
+            address_y = name_y + 25
+            address_size = 12
+
+            # Truncate long address
+            max_addr_length = 30
+            display_addr = self.callee_address[:max_addr_length]
+            if len(self.callee_address) > max_addr_length:
+                display_addr = display_addr[:-3] + "..."
+
+            addr_width, _ = self.display.get_text_size(display_addr, address_size)
+            addr_x = (self.display.WIDTH - addr_width) // 2
+
+            self.display.text(
+                display_addr,
+                addr_x,
+                address_y,
+                color=self.display.COLOR_GRAY,
+                font_size=address_size
+            )
+
+        # Draw status text
+        status_y = self.display.HEIGHT - 40
+        status_text = "Connecting..."
+        status_size = 14
+        status_width, _ = self.display.get_text_size(status_text, status_size)
+        status_x = (self.display.WIDTH - status_width) // 2
+
+        self.display.text(
+            status_text,
+            status_x,
+            status_y,
+            color=self.display.COLOR_GRAY,
+            font_size=status_size
+        )
+
+        # Draw button instructions at bottom
+        instructions_y = self.display.HEIGHT - 15
+        instructions_size = 12
+
+        # Cancel button (B)
+        cancel_text = "B: Cancel"
+        cancel_width, _ = self.display.get_text_size(cancel_text, instructions_size)
+        cancel_x = (self.display.WIDTH - cancel_width) // 2
+
+        self.display.text(
+            cancel_text,
+            cancel_x,
+            instructions_y,
+            color=self.display.COLOR_RED,
+            font_size=instructions_size
+        )
+
+        # Update display
+        self.display.update()
+
+    # Button handlers
+    def on_button_b(self) -> None:
+        """Button B: Cancel call."""
+        logger.info("Canceling outgoing call")
+        if self.voip_manager:
+            if self.voip_manager.hangup():
+                logger.info("Call canceled, going back")
+                # Go back to previous screen
+                if self.screen_manager:
+                    self.screen_manager.pop_screen()
+            else:
+                logger.error("Failed to cancel call")
+
+
+class InCallScreen(Screen):
+    """
+    In-call screen showing active call information.
+
+    Displays call duration, mute status, and call controls.
+
+    Button mapping:
+    - Button B: End call
+    - Button X: Toggle mute
+    """
+
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        voip_manager=None
+    ) -> None:
+        """
+        Initialize in-call screen.
+
+        Args:
+            display: Display controller
+            context: Application context
+            voip_manager: VoIPManager instance
+        """
+        super().__init__(display, context, "InCall")
+        self.voip_manager = voip_manager
+
+    def format_duration(self, seconds: int) -> str:
+        """
+        Format call duration as MM:SS.
+
+        Args:
+            seconds: Duration in seconds
+
+        Returns:
+            Formatted duration string
+        """
+        minutes = seconds // 60
+        secs = seconds % 60
+        return f"{minutes:02d}:{secs:02d}"
+
+    def render(self) -> None:
+        """Render the in-call screen."""
+        # Clear display
+        self.display.clear(self.display.COLOR_BLACK)
+
+        # Draw status bar
+        current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
+        self.display.status_bar(
+            time_str=current_time,
+            battery_percent=battery,
+            signal_strength=signal
+        )
+
+        # Get call info
+        caller_info = {"display_name": "Unknown", "address": ""}
+        duration = 0
+        is_muted = False
+
+        if self.voip_manager:
+            caller_info = self.voip_manager.get_caller_info()
+            duration = self.voip_manager.get_call_duration()
+            is_muted = self.voip_manager.is_muted
+
+        # Draw "Call Active" title
+        title = "Call Active"
+        title_size = 20
+        title_width, title_height = self.display.get_text_size(title, title_size)
+        title_x = (self.display.WIDTH - title_width) // 2
+        title_y = self.display.STATUS_BAR_HEIGHT + 15
+
+        self.display.text(
+            title,
+            title_x,
+            title_y,
+            color=self.display.COLOR_GREEN,
+            font_size=title_size
+        )
+
+        # Draw separator line
+        separator_y = title_y + title_height + 10
+        self.display.line(
+            20, separator_y,
+            self.display.WIDTH - 20, separator_y,
+            color=self.display.COLOR_GRAY,
+            width=2
+        )
+
+        content_y = separator_y + 20
+
+        # Draw call icon
+        icon_x = self.display.WIDTH // 2
+        icon_y = content_y + 20
+        icon_radius = 25
+
+        # Active call indicator (solid circle)
+        self.display.circle(
+            icon_x,
+            icon_y,
+            icon_radius,
+            fill=self.display.COLOR_GREEN,
+            outline=self.display.COLOR_WHITE,
+            width=2
+        )
+
+        # Phone icon
+        self.display.text(
+            "☎",
+            icon_x - 10,
+            icon_y - 10,
+            color=self.display.COLOR_WHITE,
+            font_size=20
+        )
+
+        # Draw caller/callee name
+        name_y = icon_y + icon_radius + 25
+        name_size = 18
+
+        caller_name = caller_info.get("display_name", "Unknown")
+
+        # Truncate if too long
+        max_name_length = 20
+        display_name = caller_name[:max_name_length]
+        if len(caller_name) > max_name_length:
+            display_name = display_name[:-3] + "..."
+
+        name_width, _ = self.display.get_text_size(display_name, name_size)
+        name_x = (self.display.WIDTH - name_width) // 2
+
+        self.display.text(
+            display_name,
+            name_x,
+            name_y,
+            color=self.display.COLOR_WHITE,
+            font_size=name_size
+        )
+
+        # Draw call duration
+        duration_y = name_y + 30
+        duration_text = self.format_duration(duration)
+        duration_size = 24
+        duration_width, _ = self.display.get_text_size(duration_text, duration_size)
+        duration_x = (self.display.WIDTH - duration_width) // 2
+
+        self.display.text(
+            duration_text,
+            duration_x,
+            duration_y,
+            color=self.display.COLOR_CYAN,
+            font_size=duration_size
+        )
+
+        # Draw mute indicator if muted
+        if is_muted:
+            mute_y = duration_y + 35
+            mute_text = "🔇 MUTED"
+            mute_size = 14
+            mute_width, _ = self.display.get_text_size(mute_text, mute_size)
+            mute_x = (self.display.WIDTH - mute_width) // 2
+
+            self.display.text(
+                mute_text,
+                mute_x,
+                mute_y,
+                color=self.display.COLOR_YELLOW,
+                font_size=mute_size
+            )
+
+        # Draw button instructions at bottom
+        instructions_y = self.display.HEIGHT - 15
+        instructions_size = 12
+
+        # Mute button (X)
+        mute_text = f"X: {'Unmute' if is_muted else 'Mute'}"
+        mute_width, _ = self.display.get_text_size(mute_text, instructions_size)
+        mute_x = 20
+
+        self.display.text(
+            mute_text,
+            mute_x,
+            instructions_y,
+            color=self.display.COLOR_YELLOW,
+            font_size=instructions_size
+        )
+
+        # End call button (B)
+        end_text = "B: End Call"
+        end_width, _ = self.display.get_text_size(end_text, instructions_size)
+        end_x = self.display.WIDTH - end_width - 20
+
+        self.display.text(
+            end_text,
+            end_x,
+            instructions_y,
+            color=self.display.COLOR_RED,
+            font_size=instructions_size
+        )
+
+        # Update display
+        self.display.update()
+
+    # Button handlers
+    def on_button_b(self) -> None:
+        """Button B: End call."""
+        logger.info("Ending call")
+        if self.voip_manager:
+            if self.voip_manager.hangup():
+                logger.info("Call ended, going back")
+                # Go back to previous screen
+                if self.screen_manager:
+                    self.screen_manager.pop_screen()
+            else:
+                logger.error("Failed to end call")
+
+    def on_button_x(self) -> None:
+        """Button X: Toggle mute."""
+        logger.info("Toggling mute")
+        if self.voip_manager:
+            is_muted = self.voip_manager.toggle_mute()
+            logger.info(f"Mute toggled: {'muted' if is_muted else 'unmuted'}")
+            # Re-render to show mute status
+            self.render()
+
+
+class ContactListScreen(Screen):
+    """
+    Contact list screen for selecting a contact to call.
+
+    Displays a scrollable list of contacts with favorite indicators.
+
+    Button mapping:
+    - Button A: Call selected contact
+    - Button B: Go back
+    - Button X: Move selection up
+    - Button Y: Move selection down
+    """
+
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        voip_manager=None,
+        config_manager=None
+    ) -> None:
+        """
+        Initialize contact list screen.
+
+        Args:
+            display: Display controller
+            context: Application context
+            voip_manager: VoIPManager instance
+            config_manager: ConfigManager instance for loading contacts
+        """
+        super().__init__(display, context, "ContactList")
+        self.voip_manager = voip_manager
+        self.config_manager = config_manager
+        self.contacts = []
+        self.selected_index = 0
+        self.scroll_offset = 0
+        self.max_visible_items = 5  # Number of contacts visible at once
+
+    def enter(self) -> None:
+        """Called when screen becomes active - load contacts."""
+        super().enter()
+        self.load_contacts()
+
+    def load_contacts(self) -> None:
+        """Load contacts from config manager."""
+        if self.config_manager:
+            self.contacts = self.config_manager.get_contacts()
+            # Sort by favorites first, then by name
+            self.contacts.sort(key=lambda c: (not c.favorite, c.name.lower()))
+            logger.info(f"Loaded {len(self.contacts)} contacts")
+        else:
+            logger.warning("No config manager available to load contacts")
+            self.contacts = []
+
+    def render(self) -> None:
+        """Render the contact list screen."""
+        # Clear display
+        self.display.clear(self.display.COLOR_BLACK)
+
+        # Draw status bar
+        current_time = datetime.now().strftime("%H:%M")
+        battery = self.context.battery_percent if self.context else 100
+        signal = self.context.signal_strength if self.context else 4
+
+        self.display.status_bar(
+            time_str=current_time,
+            battery_percent=battery,
+            signal_strength=signal
+        )
+
+        # Draw title
+        title = "Call Contact"
+        title_size = 20
+        title_width, title_height = self.display.get_text_size(title, title_size)
+        title_x = (self.display.WIDTH - title_width) // 2
+        title_y = self.display.STATUS_BAR_HEIGHT + 15
+
+        self.display.text(
+            title,
+            title_x,
+            title_y,
+            color=self.display.COLOR_WHITE,
+            font_size=title_size
+        )
+
+        # Draw separator line
+        separator_y = title_y + title_height + 10
+        self.display.line(
+            20, separator_y,
+            self.display.WIDTH - 20, separator_y,
+            color=self.display.COLOR_GRAY,
+            width=2
+        )
+
+        content_y = separator_y + 15
+
+        # Show empty message if no contacts
+        if not self.contacts:
+            empty_text = "No contacts found"
+            empty_size = 14
+            empty_width, _ = self.display.get_text_size(empty_text, empty_size)
+            empty_x = (self.display.WIDTH - empty_width) // 2
+            empty_y = self.display.HEIGHT // 2
+
+            self.display.text(
+                empty_text,
+                empty_x,
+                empty_y,
+                color=self.display.COLOR_GRAY,
+                font_size=empty_size
+            )
+
+            # Update display and return
+            self.display.update()
+            return
+
+        # Calculate scroll offset to keep selected item visible
+        if self.selected_index < self.scroll_offset:
+            self.scroll_offset = self.selected_index
+        elif self.selected_index >= self.scroll_offset + self.max_visible_items:
+            self.scroll_offset = self.selected_index - self.max_visible_items + 1
+
+        # Draw contact items
+        item_height = 30
+        item_font_size = 14
+
+        for i in range(self.max_visible_items):
+            contact_index = self.scroll_offset + i
+            if contact_index >= len(self.contacts):
+                break
+
+            contact = self.contacts[contact_index]
+            y_pos = content_y + (i * item_height)
+
+            # Draw selection indicator
+            if contact_index == self.selected_index:
+                # Highlight selected item
+                self.display.rectangle(
+                    10, y_pos - 3,
+                    self.display.WIDTH - 10, y_pos + item_height - 8,
+                    fill=self.display.COLOR_DARK_GRAY,
+                    outline=self.display.COLOR_CYAN,
+                    width=2
+                )
+
+                # Draw arrow
+                self.display.text(
+                    ">",
+                    15,
+                    y_pos,
+                    color=self.display.COLOR_CYAN,
+                    font_size=item_font_size
+                )
+
+            # Draw favorite indicator
+            text_x = 35 if contact_index == self.selected_index else 20
+            if contact.favorite:
+                self.display.text(
+                    "★",
+                    text_x,
+                    y_pos,
+                    color=self.display.COLOR_YELLOW,
+                    font_size=item_font_size
+                )
+                text_x += 20
+
+            # Draw contact name (truncate if too long)
+            max_name_length = 18
+            display_name = contact.name[:max_name_length]
+            if len(contact.name) > max_name_length:
+                display_name = display_name[:-3] + "..."
+
+            text_color = self.display.COLOR_WHITE if contact_index == self.selected_index else self.display.COLOR_GRAY
+
+            self.display.text(
+                display_name,
+                text_x,
+                y_pos,
+                color=text_color,
+                font_size=item_font_size
+            )
+
+        # Draw scroll indicator if needed
+        if len(self.contacts) > self.max_visible_items:
+            indicator_x = self.display.WIDTH - 8
+            indicator_height = self.max_visible_items * item_height
+            indicator_y_start = content_y
+
+            # Calculate scrollbar size and position
+            scrollbar_height = max(10, int(indicator_height * self.max_visible_items / len(self.contacts)))
+            scrollbar_y_offset = int((indicator_height - scrollbar_height) * self.scroll_offset / (len(self.contacts) - self.max_visible_items))
+
+            # Draw scrollbar background
+            self.display.rectangle(
+                indicator_x, indicator_y_start,
+                indicator_x + 3, indicator_y_start + indicator_height,
+                fill=self.display.COLOR_DARK_GRAY
+            )
+
+            # Draw scrollbar
+            self.display.rectangle(
+                indicator_x, indicator_y_start + scrollbar_y_offset,
+                indicator_x + 3, indicator_y_start + scrollbar_y_offset + scrollbar_height,
+                fill=self.display.COLOR_CYAN
+            )
+
+        # Draw instructions at bottom
+        instructions_y = self.display.HEIGHT - 15
+        instructions_size = 10
+        instructions = "A: Call | B: Back | X/Y: Navigate"
+        instr_width, _ = self.display.get_text_size(instructions, instructions_size)
+        instr_x = (self.display.WIDTH - instr_width) // 2
+
+        self.display.text(
+            instructions,
+            instr_x,
+            instructions_y,
+            color=self.display.COLOR_GRAY,
+            font_size=instructions_size
+        )
+
+        # Update display
+        self.display.update()
+
+    def select_next(self) -> None:
+        """Move selection to next contact."""
+        if self.contacts and self.selected_index < len(self.contacts) - 1:
+            self.selected_index += 1
+            logger.debug(f"Selected: {self.contacts[self.selected_index].name}")
+
+    def select_previous(self) -> None:
+        """Move selection to previous contact."""
+        if self.contacts and self.selected_index > 0:
+            self.selected_index -= 1
+            logger.debug(f"Selected: {self.contacts[self.selected_index].name}")
+
+    def call_selected_contact(self) -> None:
+        """Initiate call to selected contact."""
+        if not self.contacts or self.selected_index >= len(self.contacts):
+            logger.warning("No contact selected")
+            return
+
+        if not self.voip_manager:
+            logger.error("Cannot make call: No VoIP manager")
+            return
+
+        contact = self.contacts[self.selected_index]
+        logger.info(f"Calling contact: {contact.name} at {contact.sip_address}")
+
+        # Make the call
+        if self.voip_manager.make_call(contact.sip_address):
+            logger.info(f"Call initiated to {contact.name}")
+            # Navigate to outgoing call screen
+            if self.screen_manager:
+                # TODO: Pass contact info to outgoing call screen
+                self.screen_manager.push_screen("outgoing_call")
+        else:
+            logger.error(f"Failed to initiate call to {contact.name}")
+
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Call selected contact."""
+        self.call_selected_contact()
+
+    def on_button_b(self) -> None:
+        """Button B: Go back."""
+        if self.screen_manager:
+            self.screen_manager.pop_screen()
+
+    def on_button_x(self) -> None:
+        """Button X: Move selection up."""
+        self.select_previous()
+        self.render()
+
+    def on_button_y(self) -> None:
+        """Button Y: Move selection down."""
+        self.select_next()
+        self.render()

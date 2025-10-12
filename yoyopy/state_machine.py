@@ -23,7 +23,10 @@ class AppState(Enum):
     PLAYLIST = "playlist"            # Playlist/library view
     PLAYLIST_BROWSER = "playlist_browser"  # Browsing Mopidy playlists
     CALL_IDLE = "call_idle"          # VoIP ready, no active call
-    CALLING = "calling"              # Active VoIP call (outgoing/incoming/connected)
+    CALL_INCOMING = "call_incoming"  # Incoming call ringing
+    CALL_OUTGOING = "call_outgoing"  # Outgoing call dialing
+    CALL_ACTIVE = "call_active"      # Call connected and active
+    CALLING = "calling"              # Active VoIP call (outgoing/incoming/connected) - legacy
     CONNECTING = "connecting"        # Network connection setup
     ERROR = "error"                  # Error state
 
@@ -111,10 +114,26 @@ class StateMachine:
 
             # From CALL_IDLE
             StateTransition(AppState.CALL_IDLE, AppState.MENU, "back"),
-            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "make_call"),
-            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "incoming_call"),
+            StateTransition(AppState.CALL_IDLE, AppState.CALL_OUTGOING, "make_call"),
+            StateTransition(AppState.CALL_IDLE, AppState.CALL_INCOMING, "incoming_call"),
+            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "make_call"),  # Legacy
+            StateTransition(AppState.CALL_IDLE, AppState.CALLING, "incoming_call"),  # Legacy
 
-            # From CALLING
+            # From CALL_INCOMING
+            StateTransition(AppState.CALL_INCOMING, AppState.CALL_ACTIVE, "answer_call"),
+            StateTransition(AppState.CALL_INCOMING, AppState.CALL_IDLE, "reject_call"),
+            StateTransition(AppState.CALL_INCOMING, AppState.CALL_IDLE, "call_ended"),
+
+            # From CALL_OUTGOING
+            StateTransition(AppState.CALL_OUTGOING, AppState.CALL_ACTIVE, "call_connected"),
+            StateTransition(AppState.CALL_OUTGOING, AppState.CALL_IDLE, "cancel_call"),
+            StateTransition(AppState.CALL_OUTGOING, AppState.CALL_IDLE, "call_failed"),
+
+            # From CALL_ACTIVE
+            StateTransition(AppState.CALL_ACTIVE, AppState.CALL_IDLE, "end_call"),
+            StateTransition(AppState.CALL_ACTIVE, AppState.CALL_IDLE, "call_ended"),
+
+            # From CALLING (Legacy - keep for backward compatibility)
             StateTransition(AppState.CALLING, AppState.CALL_IDLE, "call_ended"),
             StateTransition(AppState.CALLING, AppState.MENU, "back"),
 

@@ -95,14 +95,24 @@ class VoIPManager:
         self.registration_state = RegistrationState.NONE
         self.call_state = CallState.IDLE
         self.current_call_id: Optional[str] = None
+        self.caller_address: Optional[str] = None  # SIP address of caller/callee
+        self.caller_name: Optional[str] = None  # Display name of caller/callee
+        self.call_duration: int = 0  # Call duration in seconds
+        self.call_start_time: Optional[float] = None  # Time when call became active
+        self.is_muted: bool = False  # Microphone mute state
 
         # Callbacks
         self.registration_callbacks: List[Callable[[RegistrationState], None]] = []
         self.call_state_callbacks: List[Callable[[CallState], None]] = []
+        self.incoming_call_callbacks: List[Callable[[str, str], None]] = []  # (address, name)
 
         # Monitor thread
         self.monitor_thread: Optional[threading.Thread] = None
         self.monitor_event = threading.Event()
+
+        # Call duration tracking thread
+        self.duration_thread: Optional[threading.Thread] = None
+        self.duration_stop_event = threading.Event()
 
         logger.info(f"VoIPManager initialized (server: {config.sip_server})")
 
@@ -253,17 +263,39 @@ class VoIPManager:
         elif "Refreshing" in line and "registration" in line:
             logger.debug("Registration refresh in progress")
 
-        # Parse call state
+        # Parse call state and extract caller info
         if "Call" in line:
+            # Try to extract SIP address from line
+            # Linphone format: "Receiving new incoming call from <sip:user@domain>"
+            if "from" in line.lower() and "<sip:" in line:
+                start = line.find("<sip:")
+                end = line.find(">", start)
+                if start != -1 and end != -1:
+                    self.caller_address = line[start+1:end]  # Remove < >
+                    self.caller_name = None  # Will be set if display name present
+                    logger.debug(f"Extracted caller address: {self.caller_address}")
+
             if "incoming" in line.lower():
                 self._update_call_state(CallState.INCOMING)
+                # Fire incoming call callbacks
+                if self.caller_address:
+                    for callback in self.incoming_call_callbacks:
+                        try:
+                            callback(self.caller_address, self.caller_name or self._extract_username(self.caller_address))
+                        except Exception as e:
+                            logger.error(f"Error in incoming call callback: {e}")
             elif "outgoing" in line.lower():
                 self._update_call_state(CallState.OUTGOING)
-            elif "connected" in line.lower():
+            elif "connected" in line.lower() or "streams running" in line.lower():
                 self._update_call_state(CallState.CONNECTED)
+                if not self.call_start_time:
+                    self._start_call_timer()
             elif "released" in line.lower() or "ended" in line.lower():
                 self._update_call_state(CallState.RELEASED)
+                self._stop_call_timer()
                 self.current_call_id = None
+                self.caller_address = None
+                self.caller_name = None
 
     def _update_registration_state(self, state: RegistrationState) -> None:
         """
@@ -375,7 +407,144 @@ class VoIPManager:
         """
         self.call_state_callbacks.append(callback)
 
+    def mute(self) -> bool:
+        """
+        Mute microphone.
+
+        Returns:
+            True if muted successfully
+        """
+        if not self.is_muted:
+            logger.info("Muting microphone")
+            if self._send_command("mute"):
+                self.is_muted = True
+                return True
+        return False
+
+    def unmute(self) -> bool:
+        """
+        Unmute microphone.
+
+        Returns:
+            True if unmuted successfully
+        """
+        if self.is_muted:
+            logger.info("Unmuting microphone")
+            if self._send_command("unmute"):
+                self.is_muted = False
+                return True
+        return False
+
+    def toggle_mute(self) -> bool:
+        """
+        Toggle microphone mute state.
+
+        Returns:
+            True if now muted, False if unmuted
+        """
+        if self.is_muted:
+            self.unmute()
+            return False
+        else:
+            self.mute()
+            return True
+
+    def reject_call(self) -> bool:
+        """
+        Reject incoming call.
+
+        Returns:
+            True if rejected successfully
+        """
+        logger.info("Rejecting call")
+        return self._send_command("decline")
+
+    def get_call_duration(self) -> int:
+        """
+        Get current call duration in seconds.
+
+        Returns:
+            Duration in seconds, or 0 if no active call
+        """
+        if self.call_start_time and self.call_state in [CallState.CONNECTED, CallState.STREAMS_RUNNING]:
+            return int(time.time() - self.call_start_time)
+        return 0
+
+    def get_caller_info(self) -> dict:
+        """
+        Get information about current caller/callee.
+
+        Returns:
+            Dictionary with caller information
+        """
+        return {
+            "address": self.caller_address,
+            "name": self.caller_name or self.caller_address,
+            "display_name": self.caller_name or self._extract_username(self.caller_address)
+        }
+
+    def _extract_username(self, sip_address: Optional[str]) -> str:
+        """
+        Extract username from SIP address.
+
+        Args:
+            sip_address: SIP URI (e.g., sip:user@domain)
+
+        Returns:
+            Username or full address if parsing fails
+        """
+        if not sip_address:
+            return "Unknown"
+
+        # Extract username from sip:username@domain
+        if "@" in sip_address:
+            username_part = sip_address.split("@")[0]
+            if ":" in username_part:
+                return username_part.split(":")[-1]
+            return username_part
+        return sip_address
+
+    def _start_call_timer(self) -> None:
+        """Start tracking call duration."""
+        self.call_start_time = time.time()
+        self.call_duration = 0
+
+        # Start duration tracking thread
+        self.duration_stop_event.clear()
+        self.duration_thread = threading.Thread(
+            target=self._track_duration,
+            daemon=True
+        )
+        self.duration_thread.start()
+        logger.debug("Call duration timer started")
+
+    def _stop_call_timer(self) -> None:
+        """Stop tracking call duration."""
+        self.duration_stop_event.set()
+        if self.duration_thread:
+            self.duration_thread.join(timeout=1)
+            self.duration_thread = None
+        self.call_start_time = None
+        logger.debug("Call duration timer stopped")
+
+    def _track_duration(self) -> None:
+        """Background thread to track call duration."""
+        while not self.duration_stop_event.is_set():
+            if self.call_start_time:
+                self.call_duration = int(time.time() - self.call_start_time)
+            time.sleep(1)
+
+    def on_incoming_call(self, callback: Callable[[str, str], None]) -> None:
+        """
+        Register callback for incoming calls.
+
+        Args:
+            callback: Function to call with (caller_address, caller_name)
+        """
+        self.incoming_call_callbacks.append(callback)
+
     def cleanup(self) -> None:
         """Clean up resources."""
+        self._stop_call_timer()
         self.stop()
         logger.info("VoIP manager cleaned up")
