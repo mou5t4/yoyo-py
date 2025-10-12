@@ -1484,14 +1484,26 @@ class OutgoingCallScreen(Screen):
         # Update animation frame for next render
         self.ring_animation_frame += 1
 
+        # Get caller info dynamically from VoIPManager
+        callee_name = self.callee_name
+        callee_address = self.callee_address
+
+        if self.voip_manager:
+            caller_info = self.voip_manager.get_caller_info()
+            # Use caller info from VoIPManager if available
+            if caller_info.get("display_name") != "Unknown":
+                callee_name = caller_info.get("display_name", "Unknown")
+            if caller_info.get("address"):
+                callee_address = caller_info.get("address", "")
+
         # Draw callee name
         name_y = icon_y + icon_radius + 30
         name_size = 18
 
         # Truncate if too long
         max_name_length = 20
-        display_name = self.callee_name[:max_name_length]
-        if len(self.callee_name) > max_name_length:
+        display_name = callee_name[:max_name_length]
+        if len(callee_name) > max_name_length:
             display_name = display_name[:-3] + "..."
 
         name_width, _ = self.display.get_text_size(display_name, name_size)
@@ -1506,14 +1518,14 @@ class OutgoingCallScreen(Screen):
         )
 
         # Draw callee address (smaller, below name)
-        if self.callee_address:
+        if callee_address:
             address_y = name_y + 25
             address_size = 12
 
             # Truncate long address
             max_addr_length = 30
-            display_addr = self.callee_address[:max_addr_length]
-            if len(self.callee_address) > max_addr_length:
+            display_addr = callee_address[:max_addr_length]
+            if len(callee_address) > max_addr_length:
                 display_addr = display_addr[:-3] + "..."
 
             addr_width, _ = self.display.get_text_size(display_addr, address_size)
