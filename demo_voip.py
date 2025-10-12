@@ -89,15 +89,6 @@ def main():
     for contact in contacts[:5]:  # Show first 5
         logger.info(f"  - {contact.name}: {contact.sip_address}")
 
-    # Register callback for registration state changes
-    def on_registration_change(state: RegistrationState):
-        logger.info(f"Registration state changed: {state.value}")
-        # Re-render call screen when registration state changes
-        if screen_manager.current_screen == call_screen:
-            call_screen.render()
-
-    voip_manager.on_registration_change(on_registration_change)
-
     try:
         if not voip_manager.start():
             logger.error("Failed to start VoIP manager!")
@@ -204,6 +195,39 @@ def main():
     screen_manager.register_screen("outgoing_call", outgoing_call_screen)
     screen_manager.register_screen("incoming_call", incoming_call_screen)
     screen_manager.register_screen("in_call", in_call_screen)
+
+    # Register VoIP callbacks (after screens are created)
+    def on_registration_change(state: RegistrationState):
+        logger.info(f"Registration state changed: {state.value}")
+        # Re-render call screen when registration state changes
+        if screen_manager.current_screen == call_screen:
+            call_screen.render()
+
+    voip_manager.on_registration_change(on_registration_change)
+
+    def on_incoming_call(caller_name: str, caller_address: str):
+        logger.info(f"Incoming call from: {caller_name} ({caller_address})")
+        # Switch to incoming call screen
+        screen_manager.push_screen("incoming_call")
+
+    voip_manager.on_incoming_call(on_incoming_call)
+
+    def on_call_state_change(state):
+        logger.info(f"Call state changed: {state.value}")
+        # Handle transitions based on call state
+        if state.value == "connected" or state.value == "streams_running":
+            # Call is active, switch to in-call screen
+            if screen_manager.current_screen != in_call_screen:
+                screen_manager.push_screen("in_call")
+        elif state.value == "released":
+            # Call ended, go back to menu or previous screen
+            if screen_manager.current_screen == in_call_screen or \
+               screen_manager.current_screen == incoming_call_screen or \
+               screen_manager.current_screen == outgoing_call_screen:
+                # Pop back to wherever we were before the call
+                screen_manager.pop_screen()
+
+    voip_manager.on_call_state_change(on_call_state_change)
 
     # Set initial screen (start with menu)
     screen_manager.push_screen("menu")
