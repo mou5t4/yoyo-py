@@ -128,6 +128,7 @@ class StateMachine:
 
             # From CALL_INCOMING
             StateTransition(AppState.CALL_INCOMING, AppState.CALL_ACTIVE, "answer_call"),
+            StateTransition(AppState.CALL_INCOMING, AppState.CALL_ACTIVE, "call_connected"),  # VoIP manager uses this trigger
             StateTransition(AppState.CALL_INCOMING, AppState.CALL_IDLE, "reject_call"),
             StateTransition(AppState.CALL_INCOMING, AppState.CALL_IDLE, "call_ended"),
 
@@ -178,6 +179,7 @@ class StateMachine:
             StateTransition(AppState.CALL_INCOMING, AppState.CALL_ACTIVE_MUSIC_PAUSED, "answer_call_resume_after"),
             StateTransition(AppState.CALL_INCOMING, AppState.PAUSED, "reject_call_stay_paused"),
             StateTransition(AppState.CALL_INCOMING, AppState.PLAYING_WITH_VOIP, "reject_call_resume"),
+            StateTransition(AppState.CALL_INCOMING, AppState.PLAYING_WITH_VOIP, "call_ended_auto_resume"),  # Call ends before answer
 
             # From CALL_ACTIVE_MUSIC_PAUSED (in call, music paused)
             StateTransition(AppState.CALL_ACTIVE_MUSIC_PAUSED, AppState.PLAYING_WITH_VOIP, "call_ended_auto_resume"),
@@ -451,5 +453,14 @@ class StateMachine:
         """Check if we have music paused that should resume after call."""
         return self.current_state in [
             AppState.PAUSED_BY_CALL,
+            AppState.CALL_ACTIVE_MUSIC_PAUSED
+        ]
+
+    def is_call_active(self) -> bool:
+        """Check if there is currently an active call (any call state)."""
+        return self.current_state in [
+            AppState.CALL_INCOMING,
+            AppState.CALL_OUTGOING,
+            AppState.CALL_ACTIVE,
             AppState.CALL_ACTIVE_MUSIC_PAUSED
         ]
