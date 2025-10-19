@@ -69,7 +69,7 @@
   - Call ended → pop all call screens
   - Track change → refresh NowPlayingScreen
 - ✅ `_pop_call_screens()` helper prevents stack overflow
-- ✅ Created `yoyopod_full.py` - production application
+- ✅ Created `yoyopod.py` - production application
 - ✅ Full UI navigation working
 
 **Phase 3 Complete (2025-10-19):**
@@ -363,7 +363,7 @@ speed_dial:
   - InCallScreen (active call with duration)
 
 ### Demo Applications
-- **`yoyopod_full.py`** - ⭐ **PRODUCTION APP** - Full VoIP + Music integration (Phase 2 complete)
+- **`yoyopod.py`** - ⭐ **PRODUCTION APP** - Full VoIP + Music integration (Phase 2 complete)
 - `demo_yoyopod_phase1.py` - Phase 1 core framework test (state machine only)
 - `demo_voip.py` - VoIP-only demo with full UI
 - `demo_playlists.py` - Music playlist browser
@@ -495,7 +495,7 @@ def on_call_state_change(state):
   - Screen transitions wired to VoIP/music callbacks
   - `_pop_call_screens()` helper - prevents stack overflow
   - Full UI navigation with all screens
-  - Production app: `yoyopod_full.py`
+  - Production app: `yoyopod.py`
 - All callbacks now update screens:
   - Incoming call → push IncomingCallScreen
   - Call connected → push InCallScreen

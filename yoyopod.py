@@ -22,10 +22,10 @@ Requirements:
 
 Usage:
     # Hardware mode (on Raspberry Pi)
-    ./yoyopod_full.py
+    ./yoyopod.py
 
     # Simulation mode (no hardware required)
-    ./yoyopod_full.py --simulate
+    ./yoyopod.py --simulate
 
 Features:
     - Browse and play Spotify playlists

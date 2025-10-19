@@ -67,7 +67,7 @@ YoyoPod is an iPod-inspired VoIP music player running on Raspberry Pi Zero 2W. I
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│                         YoyoPodApp (yoyopod_full.py)                  │
+│                         YoyoPodApp (yoyopod.py)                       │
 │                         Main Coordinator Process                      │
 │                         PID: varies, ~54 MB RAM                       │
 └─────┬─────────────┬─────────────┬─────────────┬─────────────────────┘
@@ -107,7 +107,7 @@ systemd (PID 1)
 │       • RAM: ~28.7 MB
 │       • Threads: ~15
 │
-├── yoyopod_full.py (manual start or systemd)
+├── yoyopod.py (manual start or systemd)
 │   • Main application coordinator
 │   • Python process
 │   • RAM: ~54.5 MB
@@ -832,7 +832,7 @@ cp config/voip_config.yaml.example config/voip_config.yaml
 # Edit config files...
 
 # Run
-python yoyopod_full.py
+python yoyopod.py
 ```
 
 ### 11.2 Systemd Service (Optional)
@@ -846,7 +846,7 @@ After=network.target mopidy.service
 Type=simple
 User=tifo
 WorkingDirectory=/home/tifo/yoyo-py
-ExecStart=/home/tifo/yoyo-py/.venv/bin/python yoyopod_full.py
+ExecStart=/home/tifo/yoyo-py/.venv/bin/python yoyopod.py
 Restart=on-failure
 
 [Install]

@@ -85,7 +85,7 @@ This pattern is based on the solution from Phase 4.2 (demo_voip.py:229-235) that
 
 ### 4. Production Application
 
-**File:** `yoyopod_full.py`
+**File:** `yoyopod.py`
 
 The main YoyoPod application with:
 - Full VoIP + Music integration
@@ -97,10 +97,10 @@ The main YoyoPod application with:
 **Usage:**
 ```bash
 # On hardware
-./yoyopod_full.py
+./yoyopod.py
 
 # Simulation mode
-./yoyopod_full.py --simulate
+./yoyopod.py --simulate
 ```
 
 ---
@@ -165,7 +165,7 @@ This is used for:
 ## Files Created/Modified
 
 ### Created:
-- `yoyopod_full.py` - Production application
+- `yoyopod.py` - Production application
 - `docs/PHASE2_SUMMARY.md` - This document
 
 ### Modified:
@@ -315,7 +315,7 @@ These will be addressed in Phase 3 testing and refinement.
 
 **Code:**
 - Enhanced `yoyopy/yoyopod_app.py` with full screen integration (900+ total lines)
-- Production-ready `yoyopod_full.py`
+- Production-ready `yoyopod.py`
 
 **Documentation:**
 - Updated `.claude/CLAUDE.md` with Phase 2 status

@@ -51,7 +51,7 @@ YoyoPod is a fully integrated music streaming and VoIP calling device built on R
 ```
 ┌────────────────────────────────────────┐
 │          YoyoPod Application           │
-│         (yoyopod_full.py)              │
+│            (yoyopod.py)                │
 │                                        │
 │  ┌──────────────┐  ┌────────────────┐ │
 │  │ VoIPManager  │  │ MopidyClient   │ │
@@ -113,7 +113,7 @@ sudo systemctl --user enable mopidy
 sudo systemctl --user start mopidy
 
 # Run YoyoPod
-python yoyopod_full.py
+python yoyopod.py
 ```
 
 ---
@@ -170,8 +170,7 @@ voip:
 
 ```
 yoyo-py/
-├── yoyopod_full.py           # Main application entry point
-├── main.py                   # Legacy entry point
+├── yoyopod.py                # Main application entry point
 ├── README.md                 # This file
 │
 ├── yoyopy/                   # Core package
@@ -228,10 +227,10 @@ yoyo-py/
 source .venv/bin/activate
 
 # Start YoyoPod
-python yoyopod_full.py
+python yoyopod.py
 
 # Or in simulation mode (no hardware required)
-python yoyopod_full.py --simulate
+python yoyopod.py --simulate
 ```
 
 ### Button Controls
@@ -302,7 +301,7 @@ ssh rpi-zero
 cd yoyo-py
 git pull origin main
 source .venv/bin/activate
-python yoyopod_full.py
+python yoyopod.py
 ```
 
 ---

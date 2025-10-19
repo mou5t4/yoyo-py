@@ -94,7 +94,7 @@ This document outlines the integration plan for merging YoyoPod's VoIP calling a
 
 ### Production Deployment
 
-**Application:** `yoyopod_full.py`
+**Application:** `yoyopod.py`
 **Status:** ✅ Running on hardware
 **Uptime:** Stable
 **Performance:** Excellent (CPU: 15-20%, RAM: 54.5 MB)
@@ -865,7 +865,7 @@ yoyopy/
 config/
 ├── yoyopod_config.yaml     # NEW: Unified app configuration
 demos/
-├── yoyopod_full.py         # NEW: Full integrated demo
+├── yoyopod.py              # Main application entry point
 docs/
 ├── INTEGRATION_PLAN.md     # This document
 ├── USER_MANUAL.md          # NEW: User guide (Phase 4)
@@ -882,7 +882,7 @@ yoyopy/
 
 ### 8.3 Main Entry Point
 
-**New file: `yoyopod_full.py`**
+**New file: `yoyopod.py`**
 
 ```python
 #!/usr/bin/env python3
