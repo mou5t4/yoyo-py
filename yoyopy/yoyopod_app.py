@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Optional, Dict, Any
 from loguru import logger
+import subprocess
 
 from yoyopy.ui.display import Display
 from yoyopy.ui.screen_manager import ScreenManager
@@ -86,6 +87,7 @@ class YoyoPodApp:
         self.auto_resume_after_call = True  # Will be loaded from config
         self.voip_registered = False
         self.handling_incoming_call = False  # Prevent callback spam
+        self.ringing_process: Optional[subprocess.Popen] = None  # Ring tone playback process
 
         # Configuration
         self.config: Dict[str, Any] = {}
@@ -446,6 +448,7 @@ class YoyoPodApp:
             return
 
         self.mopidy_client.on_track_change(self._handle_track_change)
+        self.mopidy_client.on_playback_state_change(self._handle_playback_state_change)
 
         logger.info("  ✓ Music callbacks registered")
 
@@ -489,6 +492,52 @@ class YoyoPodApp:
                 break
 
         logger.debug("Call screens cleared from stack")
+
+    def _update_now_playing_if_needed(self) -> None:
+        """
+        Update NowPlayingScreen if visible and music is playing.
+
+        Used for periodic updates to animate the progress bar.
+        """
+        # Only update if NowPlayingScreen is visible
+        if self.screen_manager.current_screen != self.now_playing_screen:
+            return
+
+        # Only update if music is actually playing
+        if self.mopidy_client:
+            playback_state = self.mopidy_client.get_playback_state()
+            if playback_state == "playing":
+                # Silently refresh the screen (no debug log to avoid spam)
+                self.now_playing_screen.render()
+
+    def _start_ringing(self) -> None:
+        """Start playing ring tone for incoming call."""
+        # Stop any existing ringing first
+        self._stop_ringing()
+
+        try:
+            # Use speaker-test to generate a continuous ring tone
+            # 800 Hz sine wave on the USB audio card (card 1)
+            self.ringing_process = subprocess.Popen(
+                ["speaker-test", "-t", "sine", "-f", "800", "-D", "plughw:1"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            logger.debug("🔔 Ring tone started")
+        except Exception as e:
+            logger.warning(f"Failed to start ring tone: {e}")
+
+    def _stop_ringing(self) -> None:
+        """Stop playing ring tone."""
+        if self.ringing_process:
+            try:
+                self.ringing_process.terminate()
+                self.ringing_process.wait(timeout=1.0)
+                logger.debug("🔕 Ring tone stopped")
+            except Exception as e:
+                logger.warning(f"Failed to stop ring tone: {e}")
+            finally:
+                self.ringing_process = None
 
     # ========================================================================
     # VoIP Event Handlers
@@ -544,6 +593,9 @@ class YoyoPodApp:
             self.screen_manager.push_screen("incoming_call")
             logger.info("  → Pushed incoming call screen")
 
+        # Start ring tone
+        self._start_ringing()
+
     def _handle_call_state_change(self, state: CallState) -> None:
         """
         Handle VoIP call state changes.
@@ -573,6 +625,9 @@ class YoyoPodApp:
                 self.screen_manager.push_screen("in_call")
                 logger.info("  → Pushed in-call screen")
 
+            # Stop ring tone when call is answered
+            self._stop_ringing()
+
         elif state == CallState.RELEASED:
             # Call ended
             self._handle_call_ended()
@@ -580,6 +635,9 @@ class YoyoPodApp:
     def _handle_call_ended(self) -> None:
         """Handle call end - restore music if needed."""
         logger.info("📞 Call ended")
+
+        # Stop ring tone (in case call was rejected while ringing)
+        self._stop_ringing()
 
         # Reset guard flag
         self.handling_incoming_call = False
@@ -600,6 +658,11 @@ class YoyoPodApp:
                 AppState.PLAYING_WITH_VOIP,
                 "call_ended_auto_resume"
             )
+
+            # Refresh NowPlayingScreen if visible to show play icon
+            if self.screen_manager.current_screen == self.now_playing_screen:
+                self.now_playing_screen.render()
+                logger.debug("  → Now playing screen refreshed (showing play icon)")
 
         elif self.music_was_playing_before_call:
             logger.info("  🎵 Music stays paused (auto-resume disabled)")
@@ -678,6 +741,54 @@ class YoyoPodApp:
             self.now_playing_screen.render()
             logger.debug("  → Now playing screen refreshed")
 
+    def _handle_playback_state_change(self, playback_state: str) -> None:
+        """
+        Handle music playback state changes.
+
+        Syncs state machine with actual mopidy playback state.
+
+        Args:
+            playback_state: New playback state (playing/paused/stopped)
+        """
+        logger.info(f"🎵 Playback state changed: {playback_state}")
+
+        # Only sync state machine if we're not in a call
+        # (during calls, call logic handles music states)
+        if self.state_machine.is_call_active():
+            logger.debug("  → In call, state machine managed by call logic")
+            return
+
+        # Sync state machine with actual playback state
+        current_state = self.state_machine.current_state
+
+        if playback_state == "playing":
+            # Music started playing
+            if self.voip_registered and current_state != AppState.PLAYING_WITH_VOIP:
+                # VoIP is ready, upgrade to PLAYING_WITH_VOIP
+                self.state_machine.transition_to(
+                    AppState.PLAYING_WITH_VOIP,
+                    "music_started"
+                )
+            elif not self.voip_registered and current_state != AppState.PLAYING:
+                # VoIP not ready yet, just PLAYING
+                self.state_machine.transition_to(
+                    AppState.PLAYING,
+                    "music_started"
+                )
+
+        elif playback_state in ("paused", "stopped"):
+            # Music paused or stopped
+            if self.state_machine.is_music_playing() and current_state != AppState.PAUSED:
+                self.state_machine.transition_to(
+                    AppState.PAUSED,
+                    "music_paused"
+                )
+
+        # Refresh NowPlayingScreen if visible to reflect new state
+        if self.screen_manager.current_screen == self.now_playing_screen:
+            self.now_playing_screen.render()
+            logger.debug("  → Now playing screen refreshed")
+
     # ========================================================================
     # State Machine Callbacks
     # ========================================================================
@@ -748,10 +859,22 @@ class YoyoPodApp:
 
                 while True:
                     time.sleep(1)
+                    # Update NowPlayingScreen if visible to animate progress bar
+                    self._update_now_playing_if_needed()
             else:
                 # Hardware mode: input handler manages button events
+                # Also update NowPlayingScreen periodically for progress animation
+                last_screen_update = time.time()
+                screen_update_interval = 1.0  # Update every second
+
                 while True:
                     time.sleep(0.1)
+
+                    # Check if it's time to update the screen
+                    current_time = time.time()
+                    if current_time - last_screen_update >= screen_update_interval:
+                        self._update_now_playing_if_needed()
+                        last_screen_update = current_time
 
         except KeyboardInterrupt:
             logger.info("\n" + "=" * 60)

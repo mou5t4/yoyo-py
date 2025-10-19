@@ -89,8 +89,12 @@ class MopidyClient:
         # Track change callbacks
         self.track_change_callbacks: List[Callable[[Optional[MopidyTrack]], None]] = []
 
+        # Playback state change callbacks
+        self.playback_state_callbacks: List[Callable[[str], None]] = []
+
         # State tracking
         self.current_track: Optional[MopidyTrack] = None
+        self.current_playback_state: Optional[str] = None
         self.is_connected = False
 
         # Polling thread for track changes
@@ -420,13 +424,24 @@ class MopidyClient:
         self.track_change_callbacks.append(callback)
         logger.debug("Registered track change callback")
 
+    def on_playback_state_change(self, callback: Callable[[str], None]) -> None:
+        """
+        Register callback for playback state changes.
+
+        Args:
+            callback: Function to call when playback state changes (playing/paused/stopped)
+        """
+        self.playback_state_callbacks.append(callback)
+        logger.debug("Registered playback state change callback")
+
     def _poll_track_changes(self) -> None:
-        """Poll for track changes (runs in background thread)."""
+        """Poll for track and playback state changes (runs in background thread)."""
         logger.debug("Track change polling started")
 
         while self.polling and not self.poll_event.is_set():
             try:
                 track = self.get_current_track()
+                playback_state = self.get_playback_state()
 
                 # Check if track changed
                 if track != self.current_track:
@@ -442,6 +457,20 @@ class MopidyClient:
 
                     if track:
                         logger.info(f"Track changed: {track.name} - {track.get_artist_string()}")
+
+                # Check if playback state changed
+                if playback_state != self.current_playback_state:
+                    old_state = self.current_playback_state
+                    self.current_playback_state = playback_state
+
+                    # Fire callbacks
+                    for callback in self.playback_state_callbacks:
+                        try:
+                            callback(playback_state)
+                        except Exception as e:
+                            logger.error(f"Error in playback state change callback: {e}")
+
+                    logger.debug(f"Playback state changed: {old_state} → {playback_state}")
 
             except Exception as e:
                 logger.error(f"Error polling track changes: {e}")
