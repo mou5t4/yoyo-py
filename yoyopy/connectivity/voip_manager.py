@@ -195,10 +195,12 @@ adaptive_rate_control=1
 mtu=1300
 
 [sound]
-playback_dev_id=ALSA: default device
-ringer_dev_id=ALSA: default device
-capture_dev_id=ALSA: default device
+playback_dev_id=ALSA: plughw:1
+ringer_dev_id=ALSA: plughw:1
+capture_dev_id=ALSA: plughw:1
+media_dev_id=ALSA: plughw:1
 echocancellation=1
+mic_gain_db=10.0
 """
 
             with open(linphonerc_path, 'w') as f:

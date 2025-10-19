@@ -85,6 +85,7 @@ class YoyoPodApp:
         self.music_was_playing_before_call = False
         self.auto_resume_after_call = True  # Will be loaded from config
         self.voip_registered = False
+        self.handling_incoming_call = False  # Prevent callback spam
 
         # Configuration
         self.config: Dict[str, Any] = {}
@@ -501,21 +502,27 @@ class YoyoPodApp:
             caller_address: SIP address of caller
             caller_name: Display name of caller
         """
+        # Guard: prevent callback spam during ring
+        if self.handling_incoming_call:
+            logger.debug(f"  (Already handling call from {caller_name})")
+            return
+
+        self.handling_incoming_call = True
         logger.info(f"📞 INCOMING CALL: {caller_name} ({caller_address})")
 
-        # Check if music is currently playing
-        if self.state_machine.is_music_playing():
-            playback_state = self.mopidy_client.get_playback_state() if self.mopidy_client else "stopped"
+        # Check if music is currently playing (check actual mopidy state, not state machine)
+        playback_state = self.mopidy_client.get_playback_state() if self.mopidy_client else "stopped"
 
-            if playback_state == "playing":
-                self.music_was_playing_before_call = True
-                logger.info("  🎵 Auto-pausing music for incoming call")
+        if playback_state == "playing":
+            self.music_was_playing_before_call = True
+            logger.info("  🎵 Auto-pausing music for incoming call")
 
-                # Pause music
-                if self.mopidy_client:
-                    self.mopidy_client.pause()
+            # Pause music
+            if self.mopidy_client:
+                self.mopidy_client.pause()
 
-                # Transition to paused-by-call state
+            # Transition to paused-by-call state (if we're in a music state)
+            if self.state_machine.is_music_playing():
                 self.state_machine.transition_to(
                     AppState.PAUSED_BY_CALL,
                     "auto_pause_for_call"
@@ -573,6 +580,9 @@ class YoyoPodApp:
     def _handle_call_ended(self) -> None:
         """Handle call end - restore music if needed."""
         logger.info("📞 Call ended")
+
+        # Reset guard flag
+        self.handling_incoming_call = False
 
         # Phase 2: Pop all call screens
         self._pop_call_screens()

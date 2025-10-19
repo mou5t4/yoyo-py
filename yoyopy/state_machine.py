@@ -90,6 +90,7 @@ class StateMachine:
             StateTransition(AppState.IDLE, AppState.MENU, "open_menu"),
             StateTransition(AppState.IDLE, AppState.SETTINGS, "open_settings"),
             StateTransition(AppState.IDLE, AppState.CONNECTING, "connect"),
+            StateTransition(AppState.IDLE, AppState.CALL_INCOMING, "incoming_call"),  # Phase 2 fix: allow calls while idle
 
             # From MENU
             StateTransition(AppState.MENU, AppState.IDLE, "back"),
