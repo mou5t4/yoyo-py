@@ -30,6 +30,11 @@ class AppState(Enum):
     CONNECTING = "connecting"        # Network connection setup
     ERROR = "error"                  # Error state
 
+    # Phase 5: VoIP + Music Integration States
+    PLAYING_WITH_VOIP = "playing_with_voip"  # Music playing, VoIP ready to receive calls
+    PAUSED_BY_CALL = "paused_by_call"        # Music auto-paused for incoming/active call
+    CALL_ACTIVE_MUSIC_PAUSED = "call_active_music_paused"  # In call, music paused in background
+
 
 @dataclass
 class StateTransition:
@@ -101,6 +106,7 @@ class StateMachine:
 
             # From PAUSED
             StateTransition(AppState.PAUSED, AppState.PLAYING, "resume"),
+            StateTransition(AppState.PAUSED, AppState.PLAYING_WITH_VOIP, "resume"),  # Phase 5: resume with VoIP
             StateTransition(AppState.PAUSED, AppState.MENU, "back"),
             StateTransition(AppState.PAUSED, AppState.IDLE, "stop"),
 
@@ -147,6 +153,39 @@ class StateMachine:
 
             # From ERROR - can go to idle
             StateTransition(AppState.ERROR, AppState.IDLE, "reset"),
+
+            # Phase 5: VoIP + Music Integration Transitions
+            # Music to VoIP-ready music
+            StateTransition(AppState.PLAYING, AppState.PLAYING_WITH_VOIP, "voip_ready"),
+            StateTransition(AppState.PLAYLIST_BROWSER, AppState.PLAYING_WITH_VOIP, "load_playlist_with_voip"),
+            StateTransition(AppState.MENU, AppState.PLAYING_WITH_VOIP, "select_media_with_voip"),
+
+            # From PLAYING_WITH_VOIP (music playing, VoIP ready)
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.PAUSED, "pause"),
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.MENU, "back"),
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.IDLE, "stop"),
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.PAUSED_BY_CALL, "auto_pause_for_call"),
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.CALL_INCOMING, "incoming_call"),
+
+            # From PAUSED_BY_CALL (music paused for call)
+            StateTransition(AppState.PAUSED_BY_CALL, AppState.CALL_INCOMING, "incoming_call_ringing"),
+            StateTransition(AppState.PAUSED_BY_CALL, AppState.CALL_ACTIVE_MUSIC_PAUSED, "call_answered"),
+            StateTransition(AppState.PAUSED_BY_CALL, AppState.PLAYING_WITH_VOIP, "call_rejected_resume"),
+            StateTransition(AppState.PAUSED_BY_CALL, AppState.PAUSED, "call_rejected_stay_paused"),
+
+            # From CALL_INCOMING with music in background
+            StateTransition(AppState.CALL_INCOMING, AppState.CALL_ACTIVE_MUSIC_PAUSED, "answer_call_resume_after"),
+            StateTransition(AppState.CALL_INCOMING, AppState.PAUSED, "reject_call_stay_paused"),
+            StateTransition(AppState.CALL_INCOMING, AppState.PLAYING_WITH_VOIP, "reject_call_resume"),
+
+            # From CALL_ACTIVE_MUSIC_PAUSED (in call, music paused)
+            StateTransition(AppState.CALL_ACTIVE_MUSIC_PAUSED, AppState.PLAYING_WITH_VOIP, "call_ended_auto_resume"),
+            StateTransition(AppState.CALL_ACTIVE_MUSIC_PAUSED, AppState.PAUSED, "call_ended_stay_paused"),
+            StateTransition(AppState.CALL_ACTIVE_MUSIC_PAUSED, AppState.MENU, "call_ended_stop_music"),
+
+            # Outgoing call from music screen
+            StateTransition(AppState.PLAYING_WITH_VOIP, AppState.CALL_OUTGOING, "make_call_pause_music"),
+            StateTransition(AppState.CALL_OUTGOING, AppState.CALL_ACTIVE_MUSIC_PAUSED, "call_connected_music_paused"),
         ]
 
     def can_transition(self, to_state: AppState, trigger: str = "manual") -> bool:
@@ -376,3 +415,40 @@ class StateMachine:
     def is_idle(self) -> bool:
         """Check if currently in IDLE state."""
         return self.current_state == AppState.IDLE
+
+    # Phase 5: VoIP + Music Integration helper methods
+
+    def is_playing_with_voip(self) -> bool:
+        """Check if currently playing music with VoIP ready."""
+        return self.current_state == AppState.PLAYING_WITH_VOIP
+
+    def is_music_paused_by_call(self) -> bool:
+        """Check if music is paused due to call."""
+        return self.current_state in [
+            AppState.PAUSED_BY_CALL,
+            AppState.CALL_ACTIVE_MUSIC_PAUSED
+        ]
+
+    def is_in_call(self) -> bool:
+        """Check if currently in any call state."""
+        return self.current_state in [
+            AppState.CALL_INCOMING,
+            AppState.CALL_OUTGOING,
+            AppState.CALL_ACTIVE,
+            AppState.CALL_ACTIVE_MUSIC_PAUSED,
+            AppState.CALLING  # Legacy
+        ]
+
+    def is_music_playing(self) -> bool:
+        """Check if music is currently playing (any music state)."""
+        return self.current_state in [
+            AppState.PLAYING,
+            AppState.PLAYING_WITH_VOIP
+        ]
+
+    def has_paused_music_for_call(self) -> bool:
+        """Check if we have music paused that should resume after call."""
+        return self.current_state in [
+            AppState.PAUSED_BY_CALL,
+            AppState.CALL_ACTIVE_MUSIC_PAUSED
+        ]

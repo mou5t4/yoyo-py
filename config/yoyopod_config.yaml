@@ -1,0 +1,43 @@
+# YoyoPod Unified Configuration
+# Phase 5: VoIP + Music Integration
+
+app:
+  name: "YoyoPod"
+  version: "1.0.0"
+  simulate: false
+
+# Audio / Music Settings
+audio:
+  mopidy_host: "localhost"
+  mopidy_port: 6680
+  auto_resume_after_call: true    # Resume music after call ends
+  fade_out_duration_ms: 0         # Fade out before call (0 = instant)
+  fade_in_duration_ms: 0          # Fade in after call (0 = instant)
+  default_volume: 70              # 0-100
+
+# VoIP Settings (reference to voip_config.yaml)
+voip:
+  config_file: "config/voip_config.yaml"
+  priority_over_music: true       # Always pause music for calls
+  auto_answer: false              # Auto-answer incoming calls
+  ring_duration_seconds: 30       # Max ring time before auto-reject
+
+# UI Settings
+ui:
+  theme: "dark"                   # dark, light
+  show_album_art: true            # Show album art if available
+  screen_timeout_seconds: 300     # Dim screen after 5 minutes
+  button_debounce_ms: 50          # Button debounce time
+
+# Display Settings
+display:
+  brightness: 80                  # 0-100
+  rotation: 0                     # 0, 90, 180, 270
+  backlight_timeout_seconds: 60   # Turn off backlight after 1 min
+
+# Logging
+logging:
+  level: "INFO"                   # DEBUG, INFO, WARNING, ERROR
+  file: "logs/yoyopod.log"
+  max_size_mb: 10
+  backup_count: 3
