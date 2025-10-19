@@ -39,7 +39,7 @@ logger.add(
     level="INFO"
 )
 
-from yoyopy.yoyopod_app import YoyoPodApp
+from yoyopy.app import YoyoPodApp
 
 
 def main():

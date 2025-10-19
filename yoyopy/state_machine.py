@@ -30,7 +30,7 @@ class AppState(Enum):
     CONNECTING = "connecting"        # Network connection setup
     ERROR = "error"                  # Error state
 
-    # Phase 5: VoIP + Music Integration States
+    # VoIP + Music Integration States
     PLAYING_WITH_VOIP = "playing_with_voip"  # Music playing, VoIP ready to receive calls
     PAUSED_BY_CALL = "paused_by_call"        # Music auto-paused for incoming/active call
     CALL_ACTIVE_MUSIC_PAUSED = "call_active_music_paused"  # In call, music paused in background
@@ -90,7 +90,7 @@ class StateMachine:
             StateTransition(AppState.IDLE, AppState.MENU, "open_menu"),
             StateTransition(AppState.IDLE, AppState.SETTINGS, "open_settings"),
             StateTransition(AppState.IDLE, AppState.CONNECTING, "connect"),
-            StateTransition(AppState.IDLE, AppState.CALL_INCOMING, "incoming_call"),  # Phase 2 fix: allow calls while idle
+            StateTransition(AppState.IDLE, AppState.CALL_INCOMING, "incoming_call"),  # Allow calls while idle
 
             # From MENU
             StateTransition(AppState.MENU, AppState.IDLE, "back"),
@@ -107,7 +107,7 @@ class StateMachine:
 
             # From PAUSED
             StateTransition(AppState.PAUSED, AppState.PLAYING, "resume"),
-            StateTransition(AppState.PAUSED, AppState.PLAYING_WITH_VOIP, "resume"),  # Phase 5: resume with VoIP
+            StateTransition(AppState.PAUSED, AppState.PLAYING_WITH_VOIP, "resume"),  # Resume with VoIP
             StateTransition(AppState.PAUSED, AppState.MENU, "back"),
             StateTransition(AppState.PAUSED, AppState.IDLE, "stop"),
 
@@ -156,7 +156,7 @@ class StateMachine:
             # From ERROR - can go to idle
             StateTransition(AppState.ERROR, AppState.IDLE, "reset"),
 
-            # Phase 5: VoIP + Music Integration Transitions
+            # VoIP + Music Integration Transitions
             # Music to VoIP-ready music
             StateTransition(AppState.PLAYING, AppState.PLAYING_WITH_VOIP, "voip_ready"),
             StateTransition(AppState.PLAYLIST_BROWSER, AppState.PLAYING_WITH_VOIP, "load_playlist_with_voip"),
@@ -419,7 +419,7 @@ class StateMachine:
         """Check if currently in IDLE state."""
         return self.current_state == AppState.IDLE
 
-    # Phase 5: VoIP + Music Integration helper methods
+    # VoIP + Music Integration helper methods
 
     def is_playing_with_voip(self) -> bool:
         """Check if currently playing music with VoIP ready."""

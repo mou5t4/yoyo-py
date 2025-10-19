@@ -2,8 +2,6 @@
 """
 YoyoPod - Full Integrated VoIP + Music Application
 
-Phase 2: Screen Integration Complete
-
 This is the production YoyoPod application with full integration:
 - VoIP calling with linphonec
 - Music streaming via Mopidy/Spotify
@@ -68,7 +66,7 @@ logger.add(
     level="INFO"
 )
 
-from yoyopy.yoyopod_app import YoyoPodApp
+from yoyopy.app import YoyoPodApp
 
 
 def main():
@@ -101,8 +99,6 @@ def main():
     logger.info("=" * 60)
     logger.info("YoyoPod Ready!")
     logger.info("=" * 60)
-    logger.info("")
-    logger.info("Phase 2: Full Screen Integration")
     logger.info("")
     logger.info("Available Features:")
     logger.info("  ✓ Music streaming (Mopidy/Spotify)")

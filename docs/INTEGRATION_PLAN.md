@@ -894,7 +894,7 @@ iPod-inspired experience.
 """
 
 import sys
-from yoyopy.yoyopod_app import YoyoPodApp
+from yoyopy.app import YoyoPodApp
 
 def main():
     simulate = "--simulate" in sys.argv

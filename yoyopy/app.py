@@ -3,8 +3,6 @@ YoyoPod - Unified VoIP + Music Streaming Application
 
 Main application coordinator that integrates VoIP calling and music streaming
 into a seamless iPod-inspired experience.
-
-Phase 5 Integration - Core coordinator class.
 """
 
 import sys
@@ -71,7 +69,7 @@ class YoyoPodApp:
         self.voip_manager: Optional[VoIPManager] = None
         self.mopidy_client: Optional[MopidyClient] = None
 
-        # Screen instances (Phase 2)
+        # Screen instances
         self.home_screen: Optional[HomeScreen] = None
         self.menu_screen: Optional[MenuScreen] = None
         self.now_playing_screen: Optional[NowPlayingScreen] = None
@@ -119,7 +117,7 @@ class YoyoPodApp:
                 logger.error("Failed to initialize managers")
                 return False
 
-            # Setup screens (Phase 2)
+            # Setup screens
             if not self._setup_screens():
                 logger.error("Failed to setup screens")
                 return False
@@ -583,7 +581,7 @@ class YoyoPodApp:
             "incoming_call"
         )
 
-        # Phase 2: Update and push incoming call screen
+        # Update and push incoming call screen
         self.incoming_call_screen.caller_address = caller_address
         self.incoming_call_screen.caller_name = caller_name
         self.incoming_call_screen.ring_animation_frame = 0  # Reset animation
@@ -620,7 +618,7 @@ class YoyoPodApp:
                     "call_connected"
                 )
 
-            # Phase 2: Push in-call screen
+            # Push in-call screen
             if self.screen_manager.current_screen != self.in_call_screen:
                 self.screen_manager.push_screen("in_call")
                 logger.info("  → Pushed in-call screen")
@@ -642,7 +640,7 @@ class YoyoPodApp:
         # Reset guard flag
         self.handling_incoming_call = False
 
-        # Phase 2: Pop all call screens
+        # Pop all call screens
         self._pop_call_screens()
 
         # Check if we should resume music
@@ -706,7 +704,7 @@ class YoyoPodApp:
         elif state == RegistrationState.FAILED:
             logger.warning("  ⚠ VoIP registration failed")
 
-        # Phase 2: Update call screen if visible
+        # Update call screen if visible
         if self.screen_manager.current_screen == self.call_screen:
             self.call_screen.render()
             logger.debug("  → Call screen refreshed")
@@ -736,7 +734,7 @@ class YoyoPodApp:
                     "playback_stopped"
                 )
 
-        # Phase 2: Update now playing screen if visible
+        # Update now playing screen if visible
         if self.screen_manager.current_screen == self.now_playing_screen:
             self.now_playing_screen.render()
             logger.debug("  → Now playing screen refreshed")
@@ -812,7 +810,7 @@ class YoyoPodApp:
         This is a blocking call that runs until the app is stopped.
         """
         logger.info("=" * 60)
-        logger.info("YoyoPod Running - Phase 1 Core Framework")
+        logger.info("YoyoPod Running")
         logger.info("=" * 60)
         logger.info("")
         logger.info("State Machine Status:")
@@ -839,11 +837,11 @@ class YoyoPodApp:
         logger.info(f"  Auto-resume after call: {self.auto_resume_after_call}")
         logger.info("")
         logger.info("=" * 60)
-        logger.info("Phase 1: Testing state machine and callbacks")
+        logger.info("System Status:")
         logger.info("  - VoIP and music managers are initialized")
         logger.info("  - Callbacks are registered")
         logger.info("  - State transitions will be logged")
-        logger.info("  - Screen integration coming in Phase 2")
+        logger.info("  - Full screen integration active")
         logger.info("")
         logger.info("Press Ctrl+C to exit")
         logger.info("=" * 60)
