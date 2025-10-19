@@ -1,190 +1,459 @@
-# yoyopy
+# YoyoPod 🎵📞
 
-**YoyoPod** - A screen-minimal streaming device for kids aged 6-12, built on Raspberry Pi Zero 2 W.
+**An iPod-inspired VoIP music player with seamless call interruption**
+
+[![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)]()
+[![Hardware](https://img.shields.io/badge/hardware-Raspberry%20Pi%20Zero%202W-red)]()
+[![Python](https://img.shields.io/badge/python-3.x-blue)]()
+
+---
 
 ## Overview
 
-yoyopy is the Python application that powers the YoyoPod variant, featuring audio streaming, VoIP calling, and GPS tracking capabilities. Designed to provide a safe, parent-controlled entertainment experience for children.
+YoyoPod is a fully integrated music streaming and VoIP calling device built on Raspberry Pi Zero 2W. Inspired by the classic iPod interface, it combines Spotify music playback with SIP-based voice calling in a compact, button-controlled experience.
+
+### Key Features
+
+✅ **Music Streaming** - Stream from Spotify or local library via Mopidy
+✅ **VoIP Calling** - Make and receive SIP calls via Linphone
+✅ **Seamless Integration** - Auto-pause music on incoming calls
+✅ **Smart Resume** - Auto-resume music after call ends
+✅ **Animated UI** - Live progress bars and state indicators
+✅ **Audible Ringing** - Incoming call ring tone
+✅ **Touch Display** - 320x240 color LCD with status bar
+✅ **Button Controls** - 4-button navigation (A, B, X, Y)
+✅ **RAM Efficient** - Runs smoothly on 416 MB RAM
+
+---
 
 ## Hardware Requirements
 
-### Core Components
-- **Raspberry Pi Zero 2 W** - Main computing platform
-- **Pimoroni Display HAT Mini** - 320x240 color LCD with buttons
-- **Cat.1 4G Module** - Primary connectivity (with WiFi fallback)
-- **GPS Module** - Location tracking for safety
-- **Battery & Power Management** - Portable operation
+### Required Components
 
-### Optional Components
-- NFC reader for content tokens
-- Emergency button for quick parent contact
+| Component | Specification | Purpose |
+|-----------|--------------|---------|
+| **Raspberry Pi Zero 2W** | 1 GHz quad-core, 512 MB RAM | Main computing platform |
+| **DisplayHATMini** | Pimoroni 320x240 LCD | Touch display and buttons |
+| **USB Audio Card** | AB13X or compatible | Microphone and speaker audio |
+| **WiFi Network** | 2.4 GHz | Internet connectivity |
+| **Power Supply** | 5V 2.5A micro USB | Device power |
 
-## Features
+### Pin Connections
 
-- Audio streaming playback
-- VoIP calling capabilities
-- GPS location tracking
-- Parental controls and content filtering
-- Offline content caching
-- MQTT-based real-time synchronization
-- Battery-optimized operation
-- Kid-friendly UI with minimal screen interaction
+- **Display**: I2C (GPIO 2/3)
+- **Buttons**: GPIO pins (A, B, X, Y)
+- **Audio**: USB port (card 1)
+
+---
+
+## Software Stack
+
+```
+┌────────────────────────────────────────┐
+│          YoyoPod Application           │
+│         (yoyopod_full.py)              │
+│                                        │
+│  ┌──────────────┐  ┌────────────────┐ │
+│  │ VoIPManager  │  │ MopidyClient   │ │
+│  │ (Linphone)   │  │ (Music)        │ │
+│  └──────────────┘  └────────────────┘ │
+│                                        │
+│  ┌──────────────────────────────────┐ │
+│  │      State Machine               │ │
+│  │      Screen Manager              │ │
+│  │      Display Driver              │ │
+│  └──────────────────────────────────┘ │
+└────────────────────────────────────────┘
+         │                    │
+         ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐
+│  linphonec      │  │  mopidy         │
+│  (VoIP client)  │  │  (Music server) │
+└─────────────────┘  └─────────────────┘
+         │                    │
+         ▼                    ▼
+┌─────────────────────────────────────┐
+│         USB Audio Card              │
+│         (ALSA: plughw:1)            │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Installation
+
+### Prerequisites
+
+1. **Operating System**: Raspberry Pi OS (Bookworm or later)
+2. **Python**: 3.x with pip
+3. **Mopidy**: Music server (`sudo apt install mopidy`)
+4. **Linphone**: VoIP client (`sudo apt install linphone-cli`)
+
+### Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/mou5t4/yoyo-py.git
+cd yoyo-py
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure VoIP and music
+cp config/voip_config.yaml.example config/voip_config.yaml
+cp config/contacts.yaml.example config/contacts.yaml
+# Edit config files with your SIP credentials and contacts
+
+# Configure Mopidy
+sudo systemctl --user enable mopidy
+sudo systemctl --user start mopidy
+
+# Run YoyoPod
+python yoyopod_full.py
+```
+
+---
+
+## Configuration
+
+### VoIP Configuration
+
+**File**: `config/voip_config.yaml`
+
+```yaml
+account:
+  sip_server: "sip.linphone.org"
+  sip_username: "your_username"
+  sip_password_ha1: "your_ha1_hash"
+  sip_identity: "sip:you@sip.linphone.org"
+  transport: "tcp"
+
+network:
+  stun_server: "stun.linphone.org"
+  enable_ice: true
+```
+
+### Contact List
+
+**File**: `config/contacts.yaml`
+
+```yaml
+contacts:
+  - name: "Mom"
+    sip_address: "sip:mom@example.com"
+    favorite: true
+
+  - name: "Dad"
+    sip_address: "sip:dad@example.com"
+    favorite: true
+```
+
+### App Configuration
+
+**File**: `config/yoyopod_config.yaml`
+
+```yaml
+audio:
+  auto_resume_after_call: true  # Resume music after call
+
+voip:
+  config_file: "config/voip_config.yaml"
+```
+
+---
 
 ## Project Structure
 
 ```
-yoyopy/
-├── pyproject.toml          # Project configuration and dependencies
-├── README.md               # This file
-├── main.py                 # Application entry point
-├── yoyopy/                 # Main package
-│   ├── __init__.py
-│   ├── ui/                # Display and button handling
-│   ├── audio/             # Audio playback and VoIP
-│   ├── connectivity/      # 4G/WiFi/network management
-│   ├── power/             # Battery monitoring
-│   ├── security/          # Parental controls
-│   ├── sync/              # Cloud synchronization
-│   └── utils/             # Logger and helpers
-├── tests/                 # Test suite
-├── assets/                # Fonts, icons, sounds
-│   ├── fonts/
-│   ├── icons/
-│   └── sounds/
-└── config/                # Configuration files
-    └── config.example.json
+yoyo-py/
+├── yoyopod_full.py           # Main application entry point
+├── main.py                   # Legacy entry point
+├── README.md                 # This file
+│
+├── yoyopy/                   # Core package
+│   ├── ui/                   # Display and screen management
+│   │   ├── display.py        # DisplayHATMini driver
+│   │   ├── screens.py        # All UI screens
+│   │   ├── screen_manager.py # Screen stack navigation
+│   │   └── input_handler.py  # Button event handling
+│   │
+│   ├── audio/                # Music playback
+│   │   └── mopidy_client.py  # Mopidy HTTP API client
+│   │
+│   ├── connectivity/         # VoIP and network
+│   │   ├── voip_manager.py   # Linphone VoIP interface
+│   │   └── voip_config.py    # VoIP configuration
+│   │
+│   ├── config/               # Configuration management
+│   │   └── config_manager.py # Config and contacts
+│   │
+│   ├── state_machine.py      # Application state management
+│   ├── yoyopod_app.py        # Main coordinator class
+│   └── app_context.py        # Shared application context
+│
+├── config/                   # Configuration files
+│   ├── voip_config.yaml      # VoIP settings
+│   ├── contacts.yaml         # Contact list
+│   └── yoyopod_config.yaml   # App settings
+│
+├── demos/                    # Demo applications
+│   ├── demo_voip.py          # VoIP-only demo
+│   ├── demo_playlists.py     # Music-only demo
+│   └── demo_yoyopod_phase1.py # Phase 1 framework demo
+│
+├── tests/                    # Test suite
+│   ├── test_phase1_state_machine.py
+│   ├── test_voip_registration.py
+│   └── test_incoming_call_debug.py
+│
+└── docs/                     # Documentation
+    ├── SYSTEM_ARCHITECTURE.md  # Complete system diagrams
+    ├── INTEGRATION_PLAN.md     # Implementation phases
+    ├── PHASE1_SUMMARY.md       # Phase 1 details
+    └── PHASE2_SUMMARY.md       # Phase 2 details
 ```
 
-## Setup Instructions
+---
 
-### Prerequisites
+## Usage
 
-- Python 3.12 or higher
-- [uv](https://github.com/astral-sh/uv) package manager
+### Starting the Application
 
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd yoyopy
-   ```
-
-2. **Install dependencies using uv:**
-   ```bash
-   uv sync
-   ```
-
-3. **Create configuration file:**
-   ```bash
-   cp config/config.example.json config/config.json
-   # Edit config/config.json with your settings
-   ```
-
-4. **Run the application:**
-   ```bash
-   uv run main.py
-   ```
-
-### Development Setup
-
-Install development dependencies:
 ```bash
-uv sync --extra dev
+# Activate virtual environment
+source .venv/bin/activate
+
+# Start YoyoPod
+python yoyopod_full.py
+
+# Or in simulation mode (no hardware required)
+python yoyopod_full.py --simulate
 ```
 
-Run tests:
+### Button Controls
+
+| Screen | Button A | Button B | Button X | Button Y |
+|--------|----------|----------|----------|----------|
+| **Menu** | Select | Back | Up | Down |
+| **Now Playing** | Play/Pause | Back | Previous | Next |
+| **Playlists** | Load | Back | Up | Down |
+| **Incoming Call** | Answer | Reject | - | - |
+| **In Call** | - | Hang Up | Mute | - |
+
+### Navigation Flow
+
+```
+Menu Screen
+├── Browse Playlists → Playlist List → Now Playing Screen
+├── VoIP Status → Call Screen (shows registration)
+└── Call Contact → Contact List → Outgoing Call → In Call Screen
+```
+
+### Call Interruption
+
+When an incoming call arrives while music is playing:
+
+1. 🎵 Music auto-pauses
+2. 📞 Incoming call screen appears
+3. 🔔 Ring tone plays (800 Hz)
+4. Press **A** to answer or **B** to reject
+5. During call: Press **B** to hang up
+6. 🎵 Music auto-resumes after call ends
+
+---
+
+## Development
+
+### Running Demos
+
 ```bash
-uv run pytest
+# VoIP calling demo (contacts, incoming/outgoing calls)
+python demos/demo_voip.py
+
+# Music streaming demo (playlists, now playing)
+python demos/demo_playlists.py
+
+# State machine framework demo
+python demos/demo_yoyopod_phase1.py
 ```
 
-Format code:
+### Running Tests
+
 ```bash
-uv run black .
-uv run ruff check .
+# Run all tests
+python -m pytest tests/
+
+# Run specific test
+python tests/test_phase1_state_machine.py
 ```
 
-Type checking:
+### SSH Deployment to Pi
+
 ```bash
-uv run mypy .
+# From development machine
+git push origin main
+
+# On Raspberry Pi
+ssh rpi-zero
+cd yoyo-py
+git pull origin main
+source .venv/bin/activate
+python yoyopod_full.py
 ```
 
-## Configuration
+---
 
-Edit `config/config.json` to customize:
+## System Architecture
 
-- **Device settings** - Name, ID, model
-- **Display** - Resolution, rotation, backlight
-- **Audio** - Volume, sample rate, buffer size
-- **Connectivity** - 4G/WiFi, APN settings
-- **Server** - API URL, MQTT broker
-- **Parental controls** - Time limits, content ratings
-- **Features** - Enable/disable VoIP, GPS, NFC
+For detailed system architecture including component diagrams, data flow, and process architecture, see:
 
-See `config/config.example.json` for all available options.
+📄 **[docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md)**
 
-## Development Phases
+Key diagrams include:
+- Component interaction diagram
+- Process architecture
+- Incoming call data flow
+- Music playback data flow
+- State machine coordination
+- Network architecture
 
-### Phase 0: Project Setup (Current)
-- ✅ Initialize uv-based Python project
-- ✅ Set up directory structure
-- ✅ Configure dependencies
-- ✅ Create logging utility with Loguru
-- ✅ Basic configuration management
+---
 
-### Phase 1: Hardware Abstraction
-- Display driver for Pimoroni HAT Mini
-- Button input handling
-- Audio output configuration
-- 4G/WiFi connectivity manager
-- GPS module integration
+## Implementation Phases
 
-### Phase 2: Core Functionality
-- Audio streaming playback
-- Content caching and management
-- MQTT client for real-time sync
-- Basic UI navigation
+YoyoPod was built in 4 phases:
 
-### Phase 3: Advanced Features
-- VoIP calling implementation
-- Parental control enforcement
-- Battery optimization
-- Offline mode handling
+### ✅ Phase 1: Core Integration Framework
+- Enhanced state machine with combined VoIP+music states
+- YoyoPodApp coordinator class
+- Callback coordination infrastructure
+- Configuration system
 
-### Phase 4: Production Ready
-- Security hardening
-- Performance optimization
-- Field testing
-- Documentation completion
+### ✅ Phase 2: Screen Integration
+- All 9 screens integrated
+- Full navigation flow
+- Screen stack management
+- Production app created
 
-## Dependencies
+### ✅ Phase 3: Call Interruption Handling
+- Music auto-pause on incoming calls
+- Music auto-resume after call ends
+- Microphone configuration
+- Hardware testing
 
-### Core
-- **Pillow** - Image processing for UI
-- **pygame-ce** - Display rendering and audio
-- **evdev** - Button input handling
-- **requests** - HTTP API communication
-- **paho-mqtt** - Real-time messaging
-- **loguru** - Structured logging
+### ✅ Phase 4: Testing & Refinement
+- Progress bar animation
+- Pause icon synchronization
+- State machine sync
+- Audible ringing
+- Bug fixes and documentation
 
-### Development
-- **pytest** - Testing framework
-- **black** - Code formatting
-- **ruff** - Fast Python linter
-- **mypy** - Static type checking
+📄 **See [docs/INTEGRATION_PLAN.md](docs/INTEGRATION_PLAN.md) for complete details**
+
+---
+
+## Performance
+
+**RAM Usage** (on Raspberry Pi Zero 2W, 416 MB total):
+- YoyoPod app: ~54.5 MB (13%)
+- Mopidy server: ~28.7 MB (7%)
+- linphonec: ~21.7 MB (5%)
+- System: ~160 MB
+- **Available: ~150 MB** ✅
+
+**CPU Usage** (quad-core 1 GHz):
+- Idle: 5-10%
+- Music playing: 10-15%
+- During call: 15-20%
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**VoIP won't register:**
+```bash
+# Check network
+ping sip.linphone.org
+
+# Check config
+cat config/voip_config.yaml
+
+# View logs (set to DEBUG level in code)
+```
+
+**No audio output:**
+```bash
+# List audio devices
+aplay -l
+arecord -l
+
+# Test speaker
+speaker-test -t wav -c 2
+
+# Check volume
+amixer -c 1
+```
+
+**Mopidy not connecting:**
+```bash
+# Check service status
+systemctl --user status mopidy
+
+# Restart service
+systemctl --user restart mopidy
+
+# Test API
+curl http://localhost:6680/mopidy/rpc
+```
+
+---
+
+## Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+---
 
 ## License
 
 MIT License - See LICENSE file for details
 
-## Contributing
+---
 
-This is a prototype project for YoyoPod Connect. Contributions welcome!
+## Credits
 
-## Support
+**Built with:**
+- [Mopidy](https://mopidy.com/) - Music server
+- [Linphone](https://www.linphone.org/) - VoIP client
+- [Pimoroni DisplayHATMini](https://shop.pimoroni.com/products/display-hat-mini) - Display and buttons
+- [Raspberry Pi](https://www.raspberrypi.com/) - Computing platform
 
-For issues and questions, please open a GitHub issue or contact the YoyoPod team.
+**Development:**
+- Integration architecture and implementation
+- State machine design
+- VoIP + Music coordination
 
 ---
 
-**Built with ❤️ for kids and parents**
+## Status
+
+**Current Version**: 2.0
+**Status**: ✅ Production Ready
+**Tested On**: Raspberry Pi Zero 2W
+**Last Updated**: 2025-10-19
+
+---
+
+**Built with ❤️ for music lovers and conversationalists**
