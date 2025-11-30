@@ -4,6 +4,7 @@ from yoyopy.ui.screens.base import Screen
 from yoyopy.ui.display import Display
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
+from loguru import logger
 
 if TYPE_CHECKING:
     from yoyopy.app_context import AppContext
