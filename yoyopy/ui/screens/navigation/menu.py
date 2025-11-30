@@ -1,0 +1,169 @@
+"""MenuScreen - Main navigation menu for YoyoPod."""
+
+from yoyopy.ui.screens.base import Screen
+
+
+class MenuScreen(Screen):
+    """
+    Menu screen for navigation.
+
+    Displays a list of menu options with selection indicator.
+
+    Button mapping:
+    - Button A: Select current item
+    - Button B: Go back to home screen
+    - Button X: Move selection up
+    - Button Y: Move selection down
+    """
+
+    def __init__(
+        self,
+        display: Display,
+        context: Optional['AppContext'] = None,
+        items: Optional[List[str]] = None,
+        selected_index: int = 0
+    ) -> None:
+        """
+        Initialize menu screen.
+
+        Args:
+            display: Display controller
+            context: Application context
+            items: List of menu items
+            selected_index: Currently selected item index
+        """
+        super().__init__(display, context, "Menu")
+
+        if items is None:
+            items = ["Music", "Podcasts", "Audiobooks", "Settings"]
+
+        self.items = items
+        self.selected_index = selected_index
+
+    def render(self) -> None:
+        """Render the menu screen."""
+        # Clear display
+        self.display.clear(self.display.COLOR_BLACK)
+
+        # Draw status bar
+        current_time = datetime.now().strftime("%H:%M")
+        self.display.status_bar(
+            time_str=current_time,
+            battery_percent=85,
+            signal_strength=3
+        )
+
+        # Draw menu title
+        title = "Main Menu"
+        title_size = 20
+        title_width, title_height = self.display.get_text_size(title, title_size)
+        title_x = (self.display.WIDTH - title_width) // 2
+        title_y = self.display.STATUS_BAR_HEIGHT + 15
+
+        self.display.text(
+            title,
+            title_x,
+            title_y,
+            color=self.display.COLOR_WHITE,
+            font_size=title_size
+        )
+
+        # Draw separator line
+        separator_y = title_y + title_height + 10
+        self.display.line(
+            20, separator_y,
+            self.display.WIDTH - 20, separator_y,
+            color=self.display.COLOR_GRAY,
+            width=2
+        )
+
+        # Draw menu items
+        item_y_start = separator_y + 20
+        item_height = 35
+        item_font_size = 16
+
+        for i, item in enumerate(self.items):
+            y_pos = item_y_start + (i * item_height)
+
+            # Draw selection indicator
+            if i == self.selected_index:
+                # Highlight selected item
+                self.display.rectangle(
+                    10, y_pos - 5,
+                    self.display.WIDTH - 10, y_pos + item_height - 10,
+                    fill=self.display.COLOR_DARK_GRAY,
+                    outline=self.display.COLOR_CYAN,
+                    width=2
+                )
+
+                # Draw arrow
+                self.display.text(
+                    ">",
+                    20,
+                    y_pos,
+                    color=self.display.COLOR_CYAN,
+                    font_size=item_font_size
+                )
+
+            # Draw item text
+            text_x = 45 if i == self.selected_index else 30
+            text_color = self.display.COLOR_WHITE if i == self.selected_index else self.display.COLOR_GRAY
+
+            self.display.text(
+                item,
+                text_x,
+                y_pos,
+                color=text_color,
+                font_size=item_font_size
+            )
+
+        # Update display
+        self.display.update()
+
+    def select_next(self) -> None:
+        """Move selection to next item."""
+        self.selected_index = (self.selected_index + 1) % len(self.items)
+        logger.debug(f"Selected: {self.items[self.selected_index]}")
+
+    def select_previous(self) -> None:
+        """Move selection to previous item."""
+        self.selected_index = (self.selected_index - 1) % len(self.items)
+        logger.debug(f"Selected: {self.items[self.selected_index]}")
+
+    def get_selected(self) -> str:
+        """Get currently selected item."""
+        return self.items[self.selected_index]
+
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Select current item."""
+        selected_item = self.get_selected()
+        logger.info(f"Menu item selected: {selected_item}")
+
+        # Navigate to appropriate screen based on selection
+        if self.screen_manager:
+            if selected_item == "Music" or selected_item == "Podcasts" or selected_item == "Audiobooks":
+                self.screen_manager.push_screen("now_playing")
+            elif selected_item == "Browse Playlists" or selected_item == "Playlists":
+                self.screen_manager.push_screen("playlists")
+            elif selected_item == "Call Parent" or selected_item == "Call" or selected_item == "Call Contact":
+                self.screen_manager.push_screen("contacts")
+            elif selected_item == "VoIP Status":
+                self.screen_manager.push_screen("call")
+            elif selected_item == "Settings":
+                logger.info("Settings not implemented yet")
+
+    def on_button_b(self) -> None:
+        """Button B: Go back to home screen."""
+        if self.screen_manager:
+            self.screen_manager.pop_screen()
+
+    def on_button_x(self) -> None:
+        """Button X: Move selection up."""
+        self.select_previous()
+        self.render()
+
+    def on_button_y(self) -> None:
+        """Button Y: Move selection down."""
+        self.select_next()
+        self.render()

@@ -10,10 +10,10 @@ from yoyopy.ui.display import Display, DisplayHAL
 # Input module
 from yoyopy.ui.input import InputManager, InputAction
 
-# Screens (temporary - will be reorganized)
-from yoyopy.ui.screen_manager import ScreenManager
+# Screens module
 from yoyopy.ui.screens import (
     Screen,
+    ScreenManager,
     HomeScreen,
     MenuScreen,
     NowPlayingScreen,

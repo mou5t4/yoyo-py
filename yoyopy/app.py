@@ -13,7 +13,7 @@ from loguru import logger
 import subprocess
 
 from yoyopy.ui.display import Display
-from yoyopy.ui.screen_manager import ScreenManager
+from yoyopy.ui.screens import ScreenManager
 from yoyopy.ui.input import get_input_manager, InputManager
 from yoyopy.ui.screens import (
     HomeScreen,

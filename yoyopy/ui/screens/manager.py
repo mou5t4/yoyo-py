@@ -8,7 +8,7 @@ from typing import Optional, Dict, Type, TYPE_CHECKING
 from loguru import logger
 
 from yoyopy.ui.display import Display
-from yoyopy.ui.screens import Screen
+from yoyopy.ui.screens.base import Screen
 
 # Import InputManager from new input HAL
 if TYPE_CHECKING:
