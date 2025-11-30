@@ -15,7 +15,7 @@ Date: 2025-11-30
 """
 
 from yoyopy.ui.display.display_factory import get_display
-from yoyopy.ui.display_hal import DisplayHAL
+from yoyopy.ui.display.display_hal import DisplayHAL
 from typing import Optional, Tuple
 from pathlib import Path
 
