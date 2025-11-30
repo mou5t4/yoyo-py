@@ -141,6 +141,11 @@ class ScreenManager:
         if not self.current_screen:
             return
 
+        # Skip if no input handler (e.g., Whisplay HAT with no buttons)
+        if not self.input_handler:
+            logger.debug("No input handler available - skipping button connection")
+            return
+
         # Register button callbacks with input handler
         self.input_handler.on_button(Button.A, ButtonEvent.PRESS, self.current_screen.on_button_a)
         self.input_handler.on_button(Button.B, ButtonEvent.PRESS, self.current_screen.on_button_b)
@@ -152,6 +157,11 @@ class ScreenManager:
     def _disconnect_buttons(self) -> None:
         """Disconnect button handlers for the current screen."""
         if not self.current_screen:
+            return
+
+        # Skip if no input handler (e.g., Whisplay HAT with no buttons)
+        if not self.input_handler:
+            logger.debug("No input handler available - skipping button disconnection")
             return
 
         # Clear all button callbacks by removing the current screen's handlers
