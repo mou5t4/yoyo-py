@@ -134,8 +134,8 @@ def get_input_manager(
                 }
 
                 if action in action_map:
-                    # Fire the action through the manager
-                    manager.fire_action(action_map[action])
+                    # Simulate the action through the manager
+                    manager.simulate_action(action_map[action])
 
             server.set_input_callback(web_input_handler)
             logger.info("  → Added web button input (browser UI)")
