@@ -242,3 +242,47 @@ class ContactListScreen(Screen):
     def select_previous(self) -> None:
         """Move selection to previous contact."""
         if self.contacts and self.selected_index > 0:
+            self.selected_index -= 1
+            logger.debug(f"Selected: {self.contacts[self.selected_index].name}")
+
+    def call_selected_contact(self) -> None:
+        """Initiate call to selected contact."""
+        if not self.contacts or self.selected_index >= len(self.contacts):
+            logger.warning("No contact selected")
+            return
+
+        if not self.voip_manager:
+            logger.error("Cannot make call: No VoIP manager")
+            return
+
+        contact = self.contacts[self.selected_index]
+        logger.info(f"Calling contact: {contact.name} at {contact.sip_address}")
+
+        # Make the call with contact name
+        if self.voip_manager.make_call(contact.sip_address, contact_name=contact.name):
+            logger.info(f"Call initiated to {contact.name}")
+            # Navigate to outgoing call screen
+            if self.screen_manager:
+                self.screen_manager.push_screen("outgoing_call")
+        else:
+            logger.error(f"Failed to initiate call to {contact.name}")
+
+    # Button handlers
+    def on_button_a(self) -> None:
+        """Button A: Call selected contact."""
+        self.call_selected_contact()
+
+    def on_button_b(self) -> None:
+        """Button B: Go back."""
+        if self.screen_manager:
+            self.screen_manager.pop_screen()
+
+    def on_button_x(self) -> None:
+        """Button X: Move selection up."""
+        self.select_previous()
+        self.render()
+
+    def on_button_y(self) -> None:
+        """Button Y: Move selection down."""
+        self.select_next()
+        self.render()
