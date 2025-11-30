@@ -197,7 +197,8 @@ class SimulationWebServer:
                     port=self.port,
                     debug=False,
                     use_reloader=False,
-                    log_output=False
+                    log_output=False,
+                    allow_unsafe_werkzeug=True
                 )
             except Exception as e:
                 logger.error(f"Web server error: {e}")

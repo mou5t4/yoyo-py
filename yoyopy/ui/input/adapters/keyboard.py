@@ -78,19 +78,17 @@ class KeyboardInputAdapter(InputHAL):
             InputAction.DOWN
         ]
 
-    def register_callback(
+    def on_action(
         self,
         action: InputAction,
-        callback: Callable[[], None],
-        data: Optional[Any] = None
+        callback: Callable[[Optional[Any]], None]
     ) -> None:
         """
         Register a callback function for an input action.
 
         Args:
             action: The InputAction to listen for
-            callback: Function to call when action occurs
-            data: Optional data to pass to callback (unused)
+            callback: Function to call when action occurs (receives optional data)
         """
         with self._lock:
             if action not in self.callbacks:
@@ -99,19 +97,30 @@ class KeyboardInputAdapter(InputHAL):
 
         logger.debug(f"Registered callback for {action.value}")
 
-    def _fire_callbacks(self, action: InputAction) -> None:
+    def clear_callbacks(self) -> None:
+        """
+        Clear all registered callbacks.
+
+        Called when switching screens or cleaning up.
+        """
+        with self._lock:
+            self.callbacks.clear()
+        logger.debug("Cleared all keyboard callbacks")
+
+    def _fire_callbacks(self, action: InputAction, data: Optional[Any] = None) -> None:
         """
         Fire all registered callbacks for an action.
 
         Args:
             action: The InputAction that occurred
+            data: Optional data to pass to callbacks
         """
         with self._lock:
             callbacks = self.callbacks.get(action, [])
 
         for callback in callbacks:
             try:
-                callback()
+                callback(data)
             except Exception as e:
                 logger.error(f"Error in callback for {action.value}: {e}")
 
@@ -219,13 +228,16 @@ class DummyKeyboardAdapter(InputHAL):
         """Return empty list (no actions supported)."""
         return []
 
-    def register_callback(
+    def on_action(
         self,
         action: InputAction,
-        callback: Callable[[], None],
-        data: Optional[Any] = None
+        callback: Callable[[Optional[Any]], None]
     ) -> None:
         """No-op callback registration."""
+        pass
+
+    def clear_callbacks(self) -> None:
+        """No-op clear callbacks."""
         pass
 
     def start(self) -> None:
