@@ -285,23 +285,9 @@
 
         // Send input to server
         function sendInput(action) {
-            fetch(`/api/input/${action}`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    console.log(`Input sent: ${action}`);
-                } else {
-                    console.error('Input error:', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Failed to send input:', error);
-            });
-
-            // Also send via WebSocket for faster response
+            // Send via WebSocket for fast, real-time response
             socket.emit('keyboard_input', { action: action });
+            console.log(`Input sent: ${action}`);
         }
 
         // Keyboard event handler
