@@ -1,55 +1,65 @@
 """
-Pimoroni Display HAT Mini adapter for YoyoPod.
+PiSugar Whisplay HAT adapter for YoyoPod.
 
-This adapter implements the DisplayHAL interface for the Pimoroni Display HAT Mini,
-featuring a 320×240 pixel landscape display with ST7789 driver.
+This adapter implements the DisplayHAL interface for the PiSugar Whisplay HAT,
+featuring a 240×280 pixel portrait display with ST7789P3 driver.
 
 Hardware Specs:
-- Display: 320×240 pixels (landscape orientation)
-- Driver: ST7789 (SPI interface)
-- Buttons: 4 tactile buttons (A, B, X, Y)
+- Display: 240×280 pixels (portrait orientation)
+- Driver: ST7789P3 (SPI interface)
+- Button: 1 mouse click button (GPIO 11, BOARD mode)
 - LED: RGB LED
-- Library: displayhatmini
+- Audio: WM8960 codec with dual MEMS microphones
+- Library: WhisPlay (custom driver)
 
 Author: YoyoPod Team
 Date: 2025-11-30
 """
 
-from yoyopy.ui.display_hal import DisplayHAL
+from yoyopy.ui.display.display_hal import DisplayHAL
 from typing import Optional, Tuple
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from loguru import logger
+import sys
+
+# Add Whisplay driver to Python path
+sys.path.append("/home/tifo/Whisplay/Driver")
 
 try:
-    from displayhatmini import DisplayHATMini
+    from WhisPlay import WhisPlayBoard
     HAS_HARDWARE = True
 except ImportError:
     HAS_HARDWARE = False
-    logger.warning("DisplayHATMini library not available - adapter will run in simulation mode")
+    logger.warning("WhisPlay library not available - adapter will run in simulation mode")
 
 
-class PimoroniDisplayAdapter(DisplayHAL):
+class WhisplayDisplayAdapter(DisplayHAL):
     """
-    Hardware adapter for Pimoroni Display HAT Mini.
+    Hardware adapter for PiSugar Whisplay HAT.
 
-    This adapter wraps the DisplayHATMini library and implements the standard
-    DisplayHAL interface, enabling hardware-independent code in the rest of
-    the application.
+    This adapter wraps the WhisPlay driver and implements the standard
+    DisplayHAL interface, enabling hardware-independent code in the rest
+    of the application.
 
-    The Pimoroni HAT features a 320×240 pixel landscape display, making it
-    suitable for side-by-side layouts and wider content.
+    The Whisplay HAT features a 240×280 pixel portrait display, making it
+    ideal for vertical layouts and content stacking.
+
+    Technical Notes:
+    - Uses RGB565 color format (converted from RGB888)
+    - Display updates require full-screen buffer transfer
+    - Backlight control: 0-100 scale (converted from 0.0-1.0)
     """
 
     # Display configuration
-    WIDTH = 320
-    HEIGHT = 240
-    ORIENTATION = "landscape"
-    STATUS_BAR_HEIGHT = 20
+    WIDTH = 240
+    HEIGHT = 280
+    ORIENTATION = "portrait"
+    STATUS_BAR_HEIGHT = 25  # Slightly taller for portrait mode
 
     def __init__(self, simulate: bool = False) -> None:
         """
-        Initialize the Pimoroni Display HAT Mini.
+        Initialize the Whisplay HAT display.
 
         Args:
             simulate: If True, run in simulation mode without hardware
@@ -64,23 +74,55 @@ class PimoroniDisplayAdapter(DisplayHAL):
 
         if not self.simulate:
             try:
-                # Initialize DisplayHATMini with buffer and backlight PWM
-                self.device = DisplayHATMini(self.buffer, backlight_pwm=True)
-                self.device.set_backlight(1.0)  # Full brightness
-                self.device.set_led(0.1, 0.0, 0.5)  # Purple LED indicator
-                logger.info("Pimoroni Display HAT Mini initialized (320×240 landscape)")
+                # Initialize WhisPlay board
+                # Note: Button event detection is disabled in driver
+                self.device = WhisPlayBoard()
+                self.device.set_backlight(100)  # Full brightness (0-100 scale)
+                self.device.set_rgb(0, 100, 200)  # Blue LED indicator
+                logger.info("Whisplay HAT initialized (240×280 portrait)")
             except Exception as e:
-                logger.error(f"Failed to initialize Pimoroni display hardware: {e}")
+                logger.error(f"Failed to initialize Whisplay display hardware: {e}")
                 logger.info("Falling back to simulation mode")
                 self.simulate = True
                 self.device = None
         else:
-            logger.info("Pimoroni display adapter running in simulation mode")
+            logger.info("Whisplay display adapter running in simulation mode")
 
     def _create_buffer(self) -> None:
         """Create a new PIL drawing buffer."""
         self.buffer = Image.new('RGB', (self.WIDTH, self.HEIGHT), self.COLOR_BLACK)
         self.draw = ImageDraw.Draw(self.buffer)
+
+    def _convert_to_rgb565(self) -> bytes:
+        """
+        Convert PIL RGB888 buffer to RGB565 byte array for Whisplay display.
+
+        RGB565 format:
+        - 5 bits for red
+        - 6 bits for green
+        - 5 bits for blue
+        - Total: 16 bits (2 bytes) per pixel
+
+        Returns:
+            Byte array in RGB565 format (big-endian)
+        """
+        pixel_data = []
+
+        for y in range(self.HEIGHT):
+            for x in range(self.WIDTH):
+                # Get RGB888 pixel from PIL buffer
+                r, g, b = self.buffer.getpixel((x, y))
+
+                # Convert to RGB565
+                # R: 8 bits -> 5 bits (keep upper 5 bits)
+                # G: 8 bits -> 6 bits (keep upper 6 bits)
+                # B: 8 bits -> 5 bits (keep upper 5 bits)
+                rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
+                # Split into 2 bytes (big-endian)
+                pixel_data.extend([(rgb565 >> 8) & 0xFF, rgb565 & 0xFF])
+
+        return bytes(pixel_data)
 
     def clear(self, color: Optional[Tuple[int, int, int]] = None) -> None:
         """Clear the display with specified color."""
@@ -88,7 +130,7 @@ class PimoroniDisplayAdapter(DisplayHAL):
             color = self.COLOR_BLACK
 
         self.draw.rectangle([(0, 0), (self.WIDTH, self.HEIGHT)], fill=color)
-        logger.debug(f"Pimoroni display cleared with color {color}")
+        logger.debug(f"Whisplay display cleared with color {color}")
 
     def text(
         self,
@@ -187,7 +229,12 @@ class PimoroniDisplayAdapter(DisplayHAL):
         battery_percent: int = 100,
         signal_strength: int = 4
     ) -> None:
-        """Draw status bar at top of screen."""
+        """
+        Draw status bar at top of screen.
+
+        Portrait layout uses slightly taller status bar (25px vs 20px)
+        to accommodate the narrower width.
+        """
         # Draw background
         self.rectangle(
             0, 0,
@@ -195,14 +242,14 @@ class PimoroniDisplayAdapter(DisplayHAL):
             fill=self.COLOR_DARK_GRAY
         )
 
-        # Draw time (centered)
-        time_x = (self.WIDTH - len(time_str) * 8) // 2
-        self.text(time_str, time_x, 2, color=self.COLOR_WHITE, font_size=14)
+        # Draw time (centered) - adjusted for narrower width
+        time_x = (self.WIDTH - len(time_str) * 7) // 2
+        self.text(time_str, time_x, 4, color=self.COLOR_WHITE, font_size=14)
 
-        # Draw battery indicator (right side)
-        battery_x = self.WIDTH - 50
-        battery_y = 4
-        battery_width = 40
+        # Draw battery indicator (right side) - scaled for portrait
+        battery_x = self.WIDTH - 45
+        battery_y = 6
+        battery_width = 35
         battery_height = 12
 
         # Battery outline
@@ -232,7 +279,7 @@ class PimoroniDisplayAdapter(DisplayHAL):
 
         # Draw signal strength (left side)
         signal_x = 5
-        signal_y = 8
+        signal_y = 10
         bar_width = 3
         bar_spacing = 2
 
@@ -249,28 +296,42 @@ class PimoroniDisplayAdapter(DisplayHAL):
             )
 
     def update(self) -> None:
-        """Flush buffer to physical display."""
+        """
+        Flush buffer to physical display.
+
+        Converts RGB888 PIL buffer to RGB565 format and sends to Whisplay display.
+        """
         if self.buffer is None:
             logger.warning("No buffer to display")
             return
 
         if not self.simulate and self.device:
             try:
-                self.device.display()
-                logger.debug("Pimoroni display updated")
+                # Convert PIL buffer to RGB565 byte array
+                pixel_data = self._convert_to_rgb565()
+
+                # Send to Whisplay display
+                self.device.draw_image(0, 0, self.WIDTH, self.HEIGHT, pixel_data)
+                logger.debug("Whisplay display updated")
             except Exception as e:
-                logger.error(f"Failed to update Pimoroni display: {e}")
+                logger.error(f"Failed to update Whisplay display: {e}")
         else:
-            logger.debug("Pimoroni display update (simulated)")
+            logger.debug("Whisplay display update (simulated)")
 
     def set_backlight(self, brightness: float) -> None:
-        """Set backlight brightness (0.0 to 1.0)."""
+        """
+        Set backlight brightness (0.0 to 1.0).
+
+        Whisplay uses 0-100 scale internally, so we convert.
+        """
         if not self.simulate and self.device:
             try:
-                self.device.set_backlight(brightness)
-                logger.debug(f"Pimoroni backlight set to {brightness}")
+                # Convert 0.0-1.0 to 0-100
+                whisplay_brightness = int(brightness * 100)
+                self.device.set_backlight(whisplay_brightness)
+                logger.debug(f"Whisplay backlight set to {brightness} ({whisplay_brightness}%)")
             except Exception as e:
-                logger.error(f"Failed to set Pimoroni backlight: {e}")
+                logger.error(f"Failed to set Whisplay backlight: {e}")
 
     def get_text_size(self, text: str, font_size: int = 16) -> Tuple[int, int]:
         """Calculate rendered text dimensions."""
@@ -286,11 +347,12 @@ class PimoroniDisplayAdapter(DisplayHAL):
         return (bbox[2] - bbox[0], bbox[3] - bbox[1])
 
     def cleanup(self) -> None:
-        """Cleanup Pimoroni display resources."""
+        """Cleanup Whisplay display resources."""
         if self.device:
             try:
-                self.device.set_backlight(0.0)  # Turn off backlight
-                self.device.set_led(0, 0, 0)    # Turn off LED
-                logger.info("Pimoroni display cleaned up")
+                self.device.set_backlight(0)    # Turn off backlight
+                self.device.set_rgb(0, 0, 0)    # Turn off LED
+                self.device.cleanup()           # Call driver cleanup
+                logger.info("Whisplay display cleaned up")
             except Exception as e:
-                logger.error(f"Error during Pimoroni cleanup: {e}")
+                logger.error(f"Error during Whisplay cleanup: {e}")

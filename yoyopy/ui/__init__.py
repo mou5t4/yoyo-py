@@ -1,4 +1,47 @@
 """
-UI module for YoyoPod display management.
-Handles Pimoroni Display HAT Mini rendering and button input.
+UI module for YoyoPod.
+
+Provides display management, input handling, and screen navigation.
 """
+
+# Display module
+from yoyopy.ui.display import Display, DisplayHAL
+
+# Input module
+from yoyopy.ui.input import InputManager, InputAction
+
+# Screens (temporary - will be reorganized)
+from yoyopy.ui.screen_manager import ScreenManager
+from yoyopy.ui.screens import (
+    Screen,
+    HomeScreen,
+    MenuScreen,
+    NowPlayingScreen,
+    PlaylistScreen,
+    CallScreen,
+    IncomingCallScreen,
+    OutgoingCallScreen,
+    InCallScreen,
+    ContactListScreen,
+)
+
+__all__ = [
+    # Display
+    'Display',
+    'DisplayHAL',
+    # Input
+    'InputManager',
+    'InputAction',
+    # Screens
+    'Screen',
+    'ScreenManager',
+    'HomeScreen',
+    'MenuScreen',
+    'NowPlayingScreen',
+    'PlaylistScreen',
+    'CallScreen',
+    'IncomingCallScreen',
+    'OutgoingCallScreen',
+    'InCallScreen',
+    'ContactListScreen',
+]

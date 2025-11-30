@@ -14,7 +14,7 @@ Author: YoyoPod Team
 Date: 2025-11-30
 """
 
-from yoyopy.ui.display_factory import get_display
+from yoyopy.ui.display.display_factory import get_display
 from yoyopy.ui.display_hal import DisplayHAL
 from typing import Optional, Tuple
 from pathlib import Path

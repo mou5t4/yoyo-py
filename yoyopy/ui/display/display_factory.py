@@ -15,8 +15,8 @@ Date: 2025-11-30
 """
 
 from yoyopy.ui.display_hal import DisplayHAL
-from yoyopy.ui.adapters.display_pimoroni import PimoroniDisplayAdapter
-from yoyopy.ui.adapters.display_whisplay import WhisplayDisplayAdapter
+from yoyopy.ui.display.adapters.display_pimoroni import PimoroniDisplayAdapter
+from yoyopy.ui.display.adapters.display_whisplay import WhisplayDisplayAdapter
 from loguru import logger
 import os
 
