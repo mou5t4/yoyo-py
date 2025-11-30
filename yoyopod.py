@@ -75,11 +75,13 @@ def main():
     simulate = "--simulate" in sys.argv
 
     if simulate:
-        logger.warning("=" * 60)
-        logger.warning("SIMULATION MODE")
-        logger.warning("Running without hardware (display will not work)")
-        logger.warning("Use this mode for testing on development machine")
-        logger.warning("=" * 60)
+        logger.info("=" * 60)
+        logger.info("SIMULATION MODE")
+        logger.info("Running without physical hardware")
+        logger.info("Web server will start on http://localhost:5000")
+        logger.info("Open the URL in your browser to view the display")
+        logger.info("Use keyboard (Arrow keys, Enter, Esc) or web buttons for input")
+        logger.info("=" * 60)
 
     # Create app
     logger.info("Initializing YoyoPod...")

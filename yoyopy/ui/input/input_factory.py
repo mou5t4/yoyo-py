@@ -11,6 +11,7 @@ from loguru import logger
 from yoyopy.ui.input.input_manager import InputManager
 from yoyopy.ui.input.adapters.four_button import FourButtonInputAdapter
 from yoyopy.ui.input.adapters.ptt_button import PTTInputAdapter
+from yoyopy.ui.input.adapters.keyboard import get_keyboard_adapter
 
 
 def get_input_manager(
@@ -105,6 +106,42 @@ def get_input_manager(
         if input_config.get('enable_voice', False):
             logger.info("  → Voice input requested but not yet implemented")
             # TODO: Add VoiceInputAdapter when implemented
+
+    # ===== Simulation Display Adapter (keyboard + web input) =====
+    elif adapter_name == "SimulationDisplayAdapter":
+        logger.info("  Detected Simulation Display Adapter")
+
+        # Add keyboard input adapter
+        keyboard_adapter = get_keyboard_adapter()
+        manager.add_adapter(keyboard_adapter)
+        logger.info("  → Added keyboard input (Enter, Esc, Arrow keys)")
+
+        # Connect web server input to keyboard adapter (reuse same callbacks)
+        try:
+            from yoyopy.ui.web_server import get_server
+            server = get_server()
+
+            def web_input_handler(action: str):
+                """Handle input from web UI buttons."""
+                from yoyopy.ui.input.input_hal import InputAction
+
+                # Map action string to InputAction
+                action_map = {
+                    'SELECT': InputAction.SELECT,
+                    'BACK': InputAction.BACK,
+                    'UP': InputAction.UP,
+                    'DOWN': InputAction.DOWN
+                }
+
+                if action in action_map:
+                    # Fire the action through the manager
+                    manager.fire_action(action_map[action])
+
+            server.set_input_callback(web_input_handler)
+            logger.info("  → Added web button input (browser UI)")
+
+        except Exception as e:
+            logger.warning(f"  → Failed to connect web input: {e}")
 
     # ===== Simulation mode or unknown hardware =====
     else:

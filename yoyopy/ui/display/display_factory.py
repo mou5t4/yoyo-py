@@ -17,6 +17,7 @@ Date: 2025-11-30
 from yoyopy.ui.display.display_hal import DisplayHAL
 from yoyopy.ui.display.adapters.pimoroni import PimoroniDisplayAdapter
 from yoyopy.ui.display.adapters.whisplay import WhisplayDisplayAdapter
+from yoyopy.ui.display.adapters.simulation import SimulationDisplayAdapter
 from loguru import logger
 import os
 
@@ -128,9 +129,23 @@ def get_display(hardware: str = "auto", simulate: bool = False) -> DisplayHAL:
         return PimoroniDisplayAdapter(simulate=simulate)
 
     elif hardware == "simulation":
-        logger.info("Creating simulated display adapter (using Pimoroni dimensions)")
-        # Use Pimoroni adapter in simulation mode for backward compatibility
-        return PimoroniDisplayAdapter(simulate=True)
+        logger.info("Creating simulation display adapter (240×280 portrait)")
+        # Use dedicated simulation adapter with web server support
+        adapter = SimulationDisplayAdapter(simulate=True)
+
+        # Start web server for browser display
+        if simulate or hardware == "simulation":
+            try:
+                from yoyopy.ui.web_server import get_server
+                server = get_server()
+                adapter.web_server = server
+                server.start()
+                logger.info("Web server started - view display at http://localhost:5000")
+            except Exception as e:
+                logger.warning(f"Failed to start web server: {e}")
+                logger.warning("Simulation display will work without web view")
+
+        return adapter
 
     else:
         # Unknown hardware type
