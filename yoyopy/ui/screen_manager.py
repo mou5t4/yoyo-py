@@ -4,12 +4,22 @@ Screen management and navigation for YoyoPod.
 Handles screen transitions and the navigation stack.
 """
 
-from typing import Optional, Dict, Type
+from typing import Optional, Dict, Type, TYPE_CHECKING
 from loguru import logger
 
 from yoyopy.ui.display import Display
 from yoyopy.ui.screens import Screen
-from yoyopy.ui.input_handler import InputHandler, Button, ButtonEvent
+
+# Import InputManager from new input HAL
+if TYPE_CHECKING:
+    from yoyopy.ui.input import InputManager, InputAction
+else:
+    try:
+        from yoyopy.ui.input import InputManager, InputAction
+    except ImportError:
+        # Fallback for gradual migration
+        InputManager = None
+        InputAction = None
 
 
 class ScreenManager:
@@ -20,16 +30,16 @@ class ScreenManager:
     handles screen lifecycle (enter/exit).
     """
 
-    def __init__(self, display: Display, input_handler: InputHandler) -> None:
+    def __init__(self, display: Display, input_manager: Optional['InputManager'] = None) -> None:
         """
         Initialize the screen manager.
 
         Args:
             display: Display controller instance
-            input_handler: Input handler for button events
+            input_manager: Input manager for handling user input (optional)
         """
         self.display = display
-        self.input_handler = input_handler
+        self.input_manager = input_manager
         self.current_screen: Optional[Screen] = None
         self.screen_stack: list[Screen] = []
         self.screens: Dict[str, Screen] = {}
@@ -136,38 +146,71 @@ class ScreenManager:
         if self.current_screen:
             self.current_screen.render()
 
-    def _connect_buttons(self) -> None:
-        """Connect button handlers for the current screen."""
+    def _connect_inputs(self) -> None:
+        """Connect input action handlers for the current screen."""
         if not self.current_screen:
             return
 
-        # Skip if no input handler (e.g., Whisplay HAT with no buttons)
-        if not self.input_handler:
-            logger.debug("No input handler available - skipping button connection")
+        # Skip if no input manager
+        if not self.input_manager:
+            logger.debug("No input manager available - skipping input connection")
             return
 
-        # Register button callbacks with input handler
-        self.input_handler.on_button(Button.A, ButtonEvent.PRESS, self.current_screen.on_button_a)
-        self.input_handler.on_button(Button.B, ButtonEvent.PRESS, self.current_screen.on_button_b)
-        self.input_handler.on_button(Button.X, ButtonEvent.PRESS, self.current_screen.on_button_x)
-        self.input_handler.on_button(Button.Y, ButtonEvent.PRESS, self.current_screen.on_button_y)
+        # Import InputAction if available
+        if InputAction is None:
+            logger.warning("InputAction not available - cannot connect inputs")
+            return
 
-        logger.debug(f"Connected button handlers for {self.current_screen.name}")
+        # Register semantic action callbacks with input manager
+        # These are hardware-independent actions that screens understand
+        self.input_manager.on_action(InputAction.SELECT, self.current_screen.on_select)
+        self.input_manager.on_action(InputAction.BACK, self.current_screen.on_back)
+        self.input_manager.on_action(InputAction.UP, self.current_screen.on_up)
+        self.input_manager.on_action(InputAction.DOWN, self.current_screen.on_down)
+        self.input_manager.on_action(InputAction.LEFT, self.current_screen.on_left)
+        self.input_manager.on_action(InputAction.RIGHT, self.current_screen.on_right)
+        self.input_manager.on_action(InputAction.MENU, self.current_screen.on_menu)
+        self.input_manager.on_action(InputAction.HOME, self.current_screen.on_home)
+
+        # Playback actions
+        self.input_manager.on_action(InputAction.PLAY_PAUSE, self.current_screen.on_play_pause)
+        self.input_manager.on_action(InputAction.NEXT_TRACK, self.current_screen.on_next_track)
+        self.input_manager.on_action(InputAction.PREV_TRACK, self.current_screen.on_prev_track)
+
+        # VoIP actions
+        self.input_manager.on_action(InputAction.CALL_ANSWER, self.current_screen.on_call_answer)
+        self.input_manager.on_action(InputAction.CALL_REJECT, self.current_screen.on_call_reject)
+        self.input_manager.on_action(InputAction.CALL_HANGUP, self.current_screen.on_call_hangup)
+
+        # PTT actions
+        self.input_manager.on_action(InputAction.PTT_PRESS, self.current_screen.on_ptt_press)
+        self.input_manager.on_action(InputAction.PTT_RELEASE, self.current_screen.on_ptt_release)
+
+        # Voice actions
+        self.input_manager.on_action(InputAction.VOICE_COMMAND, self.current_screen.on_voice_command)
+
+        logger.debug(f"Connected input actions for {self.current_screen.name}")
+
+    def _disconnect_inputs(self) -> None:
+        """Disconnect input action handlers for the current screen."""
+        if not self.current_screen:
+            return
+
+        # Skip if no input manager
+        if not self.input_manager:
+            logger.debug("No input manager available - skipping input disconnection")
+            return
+
+        # Clear all action callbacks
+        self.input_manager.clear_callbacks()
+
+        logger.debug(f"Disconnected input actions for {self.current_screen.name}")
+
+    # Legacy method names for backward compatibility
+    def _connect_buttons(self) -> None:
+        """Legacy method - redirects to _connect_inputs()."""
+        self._connect_inputs()
 
     def _disconnect_buttons(self) -> None:
-        """Disconnect button handlers for the current screen."""
-        if not self.current_screen:
-            return
-
-        # Skip if no input handler (e.g., Whisplay HAT with no buttons)
-        if not self.input_handler:
-            logger.debug("No input handler available - skipping button disconnection")
-            return
-
-        # Clear all button callbacks by removing the current screen's handlers
-        # Since we're switching screens, we'll just clear all callbacks
-        for button in Button:
-            for event_type in ButtonEvent:
-                self.input_handler.callbacks[button][event_type].clear()
-
-        logger.debug(f"Disconnected button handlers for {self.current_screen.name}")
+        """Legacy method - redirects to _disconnect_inputs()."""
+        self._disconnect_inputs()

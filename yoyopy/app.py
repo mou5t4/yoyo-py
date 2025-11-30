@@ -14,7 +14,7 @@ import subprocess
 
 from yoyopy.ui.display import Display
 from yoyopy.ui.screen_manager import ScreenManager
-from yoyopy.ui.input_handler import InputHandler
+from yoyopy.ui.input import get_input_manager, InputManager
 from yoyopy.ui.screens import (
     HomeScreen,
     MenuScreen,
@@ -63,7 +63,7 @@ class YoyoPodApp:
         self.config_manager: Optional[ConfigManager] = None
         self.state_machine: Optional[StateMachine] = None
         self.screen_manager: Optional[ScreenManager] = None
-        self.input_handler: Optional[InputHandler] = None
+        self.input_manager: Optional[InputManager] = None
 
         # Manager components
         self.voip_manager: Optional[VoIPManager] = None
@@ -243,32 +243,23 @@ class YoyoPodApp:
             logger.info("  - StateMachine")
             self.state_machine = StateMachine(self.context)
 
-            # Initialize input handler (if not simulating and using Pimoroni HAT)
-            if not self.simulate:
-                # Only initialize InputHandler for Pimoroni Display HAT Mini
-                # Whisplay HAT has different button API (single PTT button)
-                adapter = self.display.get_adapter()
-                adapter_name = adapter.__class__.__name__
+            # Initialize input manager with hardware auto-detection
+            logger.info("  - InputManager")
+            self.input_manager = get_input_manager(
+                display_adapter=self.display.get_adapter(),
+                config=self.config,
+                simulate=self.simulate
+            )
 
-                if adapter_name == "PimoroniDisplayAdapter":
-                    logger.info("  - InputHandler (Pimoroni buttons)")
-                    display_device = getattr(adapter, 'device', None)
-                    self.input_handler = InputHandler(
-                        display_device=display_device,
-                        simulate=False
-                    )
-                    self.input_handler.start()
-                else:
-                    logger.info(f"  - InputHandler (skipped for {adapter_name})")
-                    logger.info("    Note: Voice/PTT input will be added separately")
-                    self.input_handler = None
+            if self.input_manager:
+                self.input_manager.start()
+                logger.info("    ✓ Input system initialized")
             else:
-                logger.info("  - InputHandler (skipped in simulation mode)")
-                self.input_handler = None
+                logger.info("    → No input hardware available")
 
             # Initialize screen manager
             logger.info("  - ScreenManager")
-            self.screen_manager = ScreenManager(self.display, self.input_handler)
+            self.screen_manager = ScreenManager(self.display, self.input_manager)
 
             return True
 
@@ -911,10 +902,9 @@ class YoyoPodApp:
             self.mopidy_client.cleanup()
 
         # Stop input handler
-        if self.input_handler:
-            logger.info("  - Stopping input handler")
-            self.input_handler.stop()
-            self.input_handler.cleanup()
+        if self.input_manager:
+            logger.info("  - Stopping input manager")
+            self.input_manager.stop()
 
         # Clear display
         if self.display:
