@@ -31,6 +31,7 @@ ui:
 
 # Display Settings
 display:
+  hardware: "auto"                # auto, whisplay, pimoroni, simulation
   brightness: 80                  # 0-100
   rotation: 0                     # 0, 90, 180, 270
   backlight_timeout_seconds: 60   # Turn off backlight after 1 min
