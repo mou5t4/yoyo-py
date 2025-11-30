@@ -475,8 +475,8 @@ class NowPlayingScreen(Screen):
         title_y = art_y + art_size + 20
         title_size = 18
 
-        # Truncate if too long
-        max_title_length = 20
+        # Truncate if too long (adjust for portrait vs landscape)
+        max_title_length = 15 if self.display.is_portrait() else 20
         display_title = track_title[:max_title_length]
         if len(track_title) > max_title_length:
             display_title += "..."
@@ -496,7 +496,7 @@ class NowPlayingScreen(Screen):
         artist_y = title_y + 25
         artist_size = 14
 
-        max_artist_length = 25
+        max_artist_length = 18 if self.display.is_portrait() else 25
         display_artist = artist[:max_artist_length]
         if len(artist) > max_artist_length:
             display_artist += "..."
@@ -639,7 +639,9 @@ class PlaylistScreen(Screen):
         self.playlists = []
         self.selected_index = 0
         self.scroll_offset = 0
-        self.max_visible_items = 5  # Number of playlists visible at once
+        # Adjust visible items based on display orientation
+        # Portrait (240×280): 6 items, Landscape (320×240): 5 items
+        self.max_visible_items = 6 if display.is_portrait() else 5
         self.loading = False
         self.error_message = None
 
@@ -1887,7 +1889,9 @@ class ContactListScreen(Screen):
         self.contacts = []
         self.selected_index = 0
         self.scroll_offset = 0
-        self.max_visible_items = 5  # Number of contacts visible at once
+        # Adjust visible items based on display orientation
+        # Portrait (240×280): 6 items, Landscape (320×240): 5 items
+        self.max_visible_items = 6 if display.is_portrait() else 5
 
     def enter(self) -> None:
         """Called when screen becomes active - load contacts."""

@@ -218,9 +218,14 @@ class YoyoPodApp:
         logger.info("Initializing core components...")
 
         try:
-            # Initialize display
+            # Initialize display (with HAL support)
             logger.info("  - Display")
-            self.display = Display(simulate=self.simulate)
+            display_hardware = self.config.get('display', {}).get('hardware', 'auto')
+            logger.info(f"    Hardware: {display_hardware}")
+            self.display = Display(hardware=display_hardware, simulate=self.simulate)
+            logger.info(f"    Dimensions: {self.display.WIDTH}×{self.display.HEIGHT}")
+            logger.info(f"    Orientation: {self.display.ORIENTATION}")
+
             self.display.clear(self.display.COLOR_BLACK)
             self.display.text(
                 "YoyoPod Starting...",
@@ -241,8 +246,11 @@ class YoyoPodApp:
             # Initialize input handler (if not simulating)
             if not self.simulate:
                 logger.info("  - InputHandler")
+                # Get the underlying hardware adapter's device
+                adapter = self.display.get_adapter()
+                display_device = getattr(adapter, 'device', None)
                 self.input_handler = InputHandler(
-                    display_device=self.display.device,
+                    display_device=display_device,
                     simulate=False
                 )
                 self.input_handler.start()
