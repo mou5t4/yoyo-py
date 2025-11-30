@@ -112,7 +112,12 @@ def get_display(hardware: str = "auto", simulate: bool = False) -> DisplayHAL:
         >>> display.WIDTH
         320
     """
-    # Auto-detect if requested
+    # If simulate=True, force simulation hardware regardless of auto-detection
+    if simulate:
+        hardware = "simulation"
+        logger.info("Forcing simulation mode (--simulate flag)")
+
+    # Auto-detect if requested (and not already forced to simulation)
     if hardware == "auto":
         hardware = detect_hardware()
 
