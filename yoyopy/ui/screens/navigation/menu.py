@@ -1,6 +1,11 @@
 """MenuScreen - Main navigation menu for YoyoPod."""
 
 from yoyopy.ui.screens.base import Screen
+from yoyopy.ui.display import Display
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from yoyopy.app_context import AppContext
 
 
 class MenuScreen(Screen):

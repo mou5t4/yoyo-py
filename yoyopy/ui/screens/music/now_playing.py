@@ -1,6 +1,11 @@
 """NowPlayingScreen - Display currently playing track."""
 
 from yoyopy.ui.screens.base import Screen
+from yoyopy.ui.display import Display
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from yoyopy.app_context import AppContext
 
 
 class NowPlayingScreen(Screen):
