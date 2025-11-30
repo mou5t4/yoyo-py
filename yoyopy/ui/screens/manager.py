@@ -161,33 +161,44 @@ class ScreenManager:
             logger.warning("InputAction not available - cannot connect inputs")
             return
 
+        # Helper function to wrap action handlers with auto-refresh
+        def wrap_with_refresh(handler):
+            """Wrap action handler to automatically refresh display after execution."""
+            def wrapper(data=None):
+                # Call the original handler
+                handler(data)
+                # Refresh the display to show changes
+                self.refresh_current_screen()
+            return wrapper
+
         # Register semantic action callbacks with input manager
         # These are hardware-independent actions that screens understand
-        self.input_manager.on_action(InputAction.SELECT, self.current_screen.on_select)
-        self.input_manager.on_action(InputAction.BACK, self.current_screen.on_back)
-        self.input_manager.on_action(InputAction.UP, self.current_screen.on_up)
-        self.input_manager.on_action(InputAction.DOWN, self.current_screen.on_down)
-        self.input_manager.on_action(InputAction.LEFT, self.current_screen.on_left)
-        self.input_manager.on_action(InputAction.RIGHT, self.current_screen.on_right)
-        self.input_manager.on_action(InputAction.MENU, self.current_screen.on_menu)
-        self.input_manager.on_action(InputAction.HOME, self.current_screen.on_home)
+        # Each callback is wrapped to auto-refresh the display after execution
+        self.input_manager.on_action(InputAction.SELECT, wrap_with_refresh(self.current_screen.on_select))
+        self.input_manager.on_action(InputAction.BACK, wrap_with_refresh(self.current_screen.on_back))
+        self.input_manager.on_action(InputAction.UP, wrap_with_refresh(self.current_screen.on_up))
+        self.input_manager.on_action(InputAction.DOWN, wrap_with_refresh(self.current_screen.on_down))
+        self.input_manager.on_action(InputAction.LEFT, wrap_with_refresh(self.current_screen.on_left))
+        self.input_manager.on_action(InputAction.RIGHT, wrap_with_refresh(self.current_screen.on_right))
+        self.input_manager.on_action(InputAction.MENU, wrap_with_refresh(self.current_screen.on_menu))
+        self.input_manager.on_action(InputAction.HOME, wrap_with_refresh(self.current_screen.on_home))
 
         # Playback actions
-        self.input_manager.on_action(InputAction.PLAY_PAUSE, self.current_screen.on_play_pause)
-        self.input_manager.on_action(InputAction.NEXT_TRACK, self.current_screen.on_next_track)
-        self.input_manager.on_action(InputAction.PREV_TRACK, self.current_screen.on_prev_track)
+        self.input_manager.on_action(InputAction.PLAY_PAUSE, wrap_with_refresh(self.current_screen.on_play_pause))
+        self.input_manager.on_action(InputAction.NEXT_TRACK, wrap_with_refresh(self.current_screen.on_next_track))
+        self.input_manager.on_action(InputAction.PREV_TRACK, wrap_with_refresh(self.current_screen.on_prev_track))
 
         # VoIP actions
-        self.input_manager.on_action(InputAction.CALL_ANSWER, self.current_screen.on_call_answer)
-        self.input_manager.on_action(InputAction.CALL_REJECT, self.current_screen.on_call_reject)
-        self.input_manager.on_action(InputAction.CALL_HANGUP, self.current_screen.on_call_hangup)
+        self.input_manager.on_action(InputAction.CALL_ANSWER, wrap_with_refresh(self.current_screen.on_call_answer))
+        self.input_manager.on_action(InputAction.CALL_REJECT, wrap_with_refresh(self.current_screen.on_call_reject))
+        self.input_manager.on_action(InputAction.CALL_HANGUP, wrap_with_refresh(self.current_screen.on_call_hangup))
 
         # PTT actions
-        self.input_manager.on_action(InputAction.PTT_PRESS, self.current_screen.on_ptt_press)
-        self.input_manager.on_action(InputAction.PTT_RELEASE, self.current_screen.on_ptt_release)
+        self.input_manager.on_action(InputAction.PTT_PRESS, wrap_with_refresh(self.current_screen.on_ptt_press))
+        self.input_manager.on_action(InputAction.PTT_RELEASE, wrap_with_refresh(self.current_screen.on_ptt_release))
 
         # Voice actions
-        self.input_manager.on_action(InputAction.VOICE_COMMAND, self.current_screen.on_voice_command)
+        self.input_manager.on_action(InputAction.VOICE_COMMAND, wrap_with_refresh(self.current_screen.on_voice_command))
 
         logger.debug(f"Connected input actions for {self.current_screen.name}")
 
