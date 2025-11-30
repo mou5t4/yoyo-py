@@ -243,17 +243,25 @@ class YoyoPodApp:
             logger.info("  - StateMachine")
             self.state_machine = StateMachine(self.context)
 
-            # Initialize input handler (if not simulating)
+            # Initialize input handler (if not simulating and using Pimoroni HAT)
             if not self.simulate:
-                logger.info("  - InputHandler")
-                # Get the underlying hardware adapter's device
+                # Only initialize InputHandler for Pimoroni Display HAT Mini
+                # Whisplay HAT has different button API (single PTT button)
                 adapter = self.display.get_adapter()
-                display_device = getattr(adapter, 'device', None)
-                self.input_handler = InputHandler(
-                    display_device=display_device,
-                    simulate=False
-                )
-                self.input_handler.start()
+                adapter_name = adapter.__class__.__name__
+
+                if adapter_name == "PimoroniDisplayAdapter":
+                    logger.info("  - InputHandler (Pimoroni buttons)")
+                    display_device = getattr(adapter, 'device', None)
+                    self.input_handler = InputHandler(
+                        display_device=display_device,
+                        simulate=False
+                    )
+                    self.input_handler.start()
+                else:
+                    logger.info(f"  - InputHandler (skipped for {adapter_name})")
+                    logger.info("    Note: Voice/PTT input will be added separately")
+                    self.input_handler = None
             else:
                 logger.info("  - InputHandler (skipped in simulation mode)")
                 self.input_handler = None
