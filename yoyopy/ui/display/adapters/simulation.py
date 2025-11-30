@@ -281,6 +281,49 @@ class SimulationDisplayAdapter(DisplayHAL):
             width=width
         )
 
+    def image(
+        self,
+        image_path: Path,
+        x: int,
+        y: int,
+        width: Optional[int] = None,
+        height: Optional[int] = None
+    ) -> None:
+        """
+        Draw an image from file.
+
+        Args:
+            image_path: Path to image file (PNG, JPG, etc.)
+            x: X coordinate (top-left corner)
+            y: Y coordinate (top-left corner)
+            width: Resize width (None to keep original)
+            height: Resize height (None to keep original)
+        """
+        if self.buffer is None:
+            return
+
+        try:
+            # Load image
+            img = Image.open(image_path)
+
+            # Resize if dimensions provided
+            if width or height:
+                # Calculate dimensions preserving aspect ratio if only one is provided
+                if width and not height:
+                    aspect = img.height / img.width
+                    height = int(width * aspect)
+                elif height and not width:
+                    aspect = img.width / img.height
+                    width = int(height * aspect)
+
+                img = img.resize((width, height), Image.Resampling.LANCZOS)
+
+            # Paste image onto buffer
+            self.buffer.paste(img, (x, y))
+
+        except Exception as e:
+            logger.warning(f"Failed to draw image {image_path}: {e}")
+
     def get_text_size(
         self,
         text: str,
